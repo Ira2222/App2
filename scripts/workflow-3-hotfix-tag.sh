@@ -5,10 +5,10 @@
 set -euo pipefail
 
 # === CONFIG (edit these variables) ===
-OWNER="your-gh-owner"
-REPO="your-repo"
-TAG="vX.Y.Z-hotfix"
-COMMIT_SHA="abcdef1234567890"  # specific commit to tag
+OWNER="Ira2222"                         # GitHub username/org
+REPO="App2"                             # Repository name
+TAG="vX.Y.Z-hotfix"                    # Hotfix tag
+COMMIT_SHA="abcdef1234567890"          # specific commit to tag
 
 echo "🔧 Creating hotfix tag ${TAG} from commit ${COMMIT_SHA} for ${OWNER}/${REPO}"
 
@@ -31,7 +31,11 @@ echo "✅ Hotfix tag ${TAG} created and pushed"
 
 # === Verify release attestation ===
 echo "🔍 Verifying release attestation..."
-gh release verify "${TAG}" -R "${OWNER}/${REPO}"
+if ! gh release verify "${TAG}" -R "${OWNER}/${REPO}" --format json > /tmp/release-verify.json 2>&1; then
+    echo "❌ Release attestation verification failed"
+    cat /tmp/release-verify.json
+    exit 1
+fi
 
 echo "✅ Release attestation verified"
 

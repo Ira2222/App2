@@ -54,7 +54,7 @@ jobs:
           context: .
           file: src/App2.Api/Dockerfile
           push: true
-          provenance: false
+          provenance: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 

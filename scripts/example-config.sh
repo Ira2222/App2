@@ -3,8 +3,8 @@
 # Copy this file and edit the values for your repository
 
 # === GITHUB REPOSITORY CONFIG ===
-export OWNER="your-github-username"        # e.g., "Ira2222"
-export REPO="your-repository-name"         # e.g., "App2"
+export OWNER="Ira2222"                     # GitHub username/org
+export REPO="App2"                         # Repository name
 
 # === RELEASE TAGS ===
 export MAIN_TAG="v0.1.0"                   # Main release tag

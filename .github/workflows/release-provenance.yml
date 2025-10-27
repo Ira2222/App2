@@ -59,3 +59,64 @@ jobs:
           files: |
             artifacts/app2-api.zip
             artifacts/web-dist.zip
+
+  verify-release:
+    name: Verify Release Attestations
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Verify Release Attestation
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "Verifying release attestation for tag: $TAG_NAME"
+          
+          if ! gh release verify "$TAG_NAME" -R "${{ github.repository }}" --format json > /tmp/release-verify.json 2>&1; then
+            echo "❌ Release attestation verification failed"
+            cat /tmp/release-verify.json
+            exit 1
+          fi
+          
+          echo "✅ Release attestation verified successfully"
+          cat /tmp/release-verify.json
+
+      - name: Verify Container Attestation (if exists)
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          IMAGE="ghcr.io/${{ github.repository }}:$TAG_NAME"
+          echo "Verifying container attestation for image: $IMAGE"
+          
+          # Check if image exists before verifying
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            if ! gh attestation verify "oci://$IMAGE" --repo "${{ github.repository }}" --format json > /tmp/attestation-verify.json 2>&1; then
+              echo "❌ Container attestation verification failed"
+              cat /tmp/attestation-verify.json
+              exit 1
+            fi
+            echo "✅ Container attestation verified successfully"
+            cat /tmp/attestation-verify.json
+          else
+            echo "ℹ️ Container image not found, skipping container attestation verification"
+          fi
+
+      - name: Upload Verification Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-results
+          path: |
+            /tmp/release-verify.json
+            /tmp/attestation-verify.json

@@ -5,9 +5,9 @@
 set -euo pipefail
 
 # === CONFIG (edit the 3 lines below) ===
-OWNER="your-gh-owner"                   # e.g., Ira2222
-REPO="your-repo"                        # e.g., App2
-TAG="v0.1.0"
+OWNER="Ira2222"                         # GitHub username/org
+REPO="App2"                             # Repository name
+TAG="v0.1.0"                           # Release tag
 
 echo "🚀 Starting full release cycle for ${OWNER}/${REPO} with tag ${TAG}"
 
@@ -52,13 +52,21 @@ echo "✅ Tag ${TAG} created and pushed"
 
 # === 5) Verify the release attestation & image provenance ===
 echo "🔍 Verifying release attestation..."
-gh release verify "${TAG}" -R "${OWNER}/${REPO}"
+if ! gh release verify "${TAG}" -R "${OWNER}/${REPO}" --format json > /tmp/release-verify.json 2>&1; then
+    echo "❌ Release attestation verification failed"
+    cat /tmp/release-verify.json
+    exit 1
+fi
 
 echo "✅ Release attestation verified"
 
 # If you publish a container to GHCR with the same tag:
 echo "🐳 Verifying GHCR image provenance..."
-gh attestation verify "oci://ghcr.io/${OWNER}/${REPO}:${TAG}" --repo "${OWNER}/${REPO}"
+if ! gh attestation verify "oci://ghcr.io/${OWNER}/${REPO}:${TAG}" --repo "${OWNER}/${REPO}" --format json > /tmp/attestation-verify.json 2>&1; then
+    echo "❌ GHCR image attestation verification failed"
+    cat /tmp/attestation-verify.json
+    exit 1
+fi
 
 echo "✅ GHCR image provenance verified"
 
