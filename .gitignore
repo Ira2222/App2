@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+out/
+
+# User secrets
+secrets.json
+
+# Node modules and build artifacts
+apps/web/node_modules/
+apps/web/dist/
+
+# IDE files
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+.git/
+.github/
+docker/
+tests/
+*.user
+*.suo
+*.swp
+*.md

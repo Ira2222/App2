@@ -1,0 +1,61 @@
+name: release-provenance
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    env:
+      ART_DIR: artifacts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish API
+        run: |
+          mkdir -p "$ART_DIR"
+          dotnet publish src/App2.Api/App2.Api.csproj -c Release -o "$ART_DIR/api-publish"
+          (cd "$ART_DIR" && zip -r app2-api.zip api-publish)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Web build (Vite)
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package web dist
+        run: |
+          (cd apps/web && zip -r "../$ART_DIR/web-dist.zip" dist)
+
+      - name: Attest zipped artifacts (SLSA provenance)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            artifacts/app2-api.zip
+            artifacts/web-dist.zip
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            artifacts/app2-api.zip
+            artifacts/web-dist.zip
