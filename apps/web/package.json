@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:client": "openapi-generator-cli generate -i ../../openapi/app2.openapi.json -g typescript-fetch -o src/api --additional-properties=supportsES6=true,npmName=app2-api-client,typescriptThreePlus=true",
+    "postgenerate:client": "echo 'TypeScript client generated in src/api'"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.13.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",

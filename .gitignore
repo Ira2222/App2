@@ -10,6 +10,9 @@ secrets.json
 apps/web/node_modules/
 apps/web/dist/
 
+# Generated OpenAPI clients
+apps/web/src/api/
+
 # IDE files
 .vscode/
 .idea/
