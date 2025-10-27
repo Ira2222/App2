@@ -1,9 +1,9 @@
 # App2 Starter
 
-[![CI](https://github.com/<OWNER>/<REPO>/actions/workflows/ci.yml/badge.svg)](https://github.com/<OWNER>/<REPO>/actions/workflows/ci.yml)
-[![Security](https://github.com/<OWNER>/<REPO>/actions/workflows/security.yml/badge.svg)](https://github.com/<OWNER>/<REPO>/actions/workflows/security.yml)
-[![Container](https://github.com/<OWNER>/<REPO>/actions/workflows/container.yml/badge.svg)](https://github.com/<OWNER>/<REPO>/actions/workflows/container.yml)
-[![Release (provenance)](https://github.com/<OWNER>/<REPO>/actions/workflows/release-provenance.yml/badge.svg)](https://github.com/<OWNER>/<REPO>/actions/workflows/release-provenance.yml)
+[![CI](https://github.com/Ira2222/App2/actions/workflows/ci.yml/badge.svg)](https://github.com/Ira2222/App2/actions/workflows/ci.yml)
+[![Security](https://github.com/Ira2222/App2/actions/workflows/security.yml/badge.svg)](https://github.com/Ira2222/App2/actions/workflows/security.yml)
+[![Container](https://github.com/Ira2222/App2/actions/workflows/container.yml/badge.svg)](https://github.com/Ira2222/App2/actions/workflows/container.yml)
+[![Release (provenance)](https://github.com/Ira2222/App2/actions/workflows/release-provenance.yml/badge.svg)](https://github.com/Ira2222/App2/actions/workflows/release-provenance.yml)
 
 A modular .NET 8 Minimal API + Vite React starter built for secure-by-default services and spec-first workflows. The API exposes feature-flagged middleware (auth, CORS, rate limiting, output caching, security headers, observability) and serves as the backend for a React client that consumes generated OpenAPI clients.
 
@@ -68,8 +68,8 @@ echo "$GHCR_PAT" | docker login ghcr.io -u YOUR_GH_USERNAME --password-stdin
 ### 2) Pull the image
 
 ```bash
-docker pull ghcr.io/<OWNER>/<REPO>:v0.1.0
-docker pull ghcr.io/<OWNER>/<REPO>@sha256:<DIGEST>
+docker pull ghcr.io/ira2222/app2:v0.1.0
+docker pull ghcr.io/ira2222/app2@sha256:<DIGEST>
 ```
 
 ### 3) Run with Docker
@@ -77,7 +77,7 @@ docker pull ghcr.io/<OWNER>/<REPO>@sha256:<DIGEST>
 ```bash
 docker run --rm -p 5080:8080 \
   -e ASPNETCORE_ENVIRONMENT=Production \
-  ghcr.io/<OWNER>/<REPO>:v0.1.0
+  ghcr.io/ira2222/app2:v0.1.0
 ```
 
 ### 4) Or run with Docker Compose
@@ -87,7 +87,7 @@ docker run --rm -p 5080:8080 \
 docker compose -f docker/compose.api.yml up --build -d
 
 # (B) Pull from GHCR by tag
-IMAGE=ghcr.io/<OWNER>/<REPO> TAG=v0.1.0 docker compose -f docker/compose.api.yml up -d
+IMAGE=ghcr.io/ira2222/app2 TAG=v0.1.0 docker compose -f docker/compose.api.yml up -d
 
 # (C) API + Redis (output caching enabled)
 docker compose -f docker/compose.redis.yml up --build -d
