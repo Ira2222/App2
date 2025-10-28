@@ -51,6 +51,7 @@ jobs:
     permissions:
       contents: read
       security-events: write  # REQUIRED for SARIF upload
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - name: Trivy repo scan (fs)
@@ -66,18 +67,20 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-fs.sarif
+          category: trivy-repo
 
   trivy-image:
     name: Trivy (container image → SARIF)
     # Only run on main branch to avoid failures when image doesn't exist yet
-    if: github.ref == 'refs/heads/main' && hashFiles('**/Dockerfile') != ''
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write  # REQUIRED for SARIF upload
+      actions: read
     steps:
       - uses: actions/checkout@v4
-      - name: Build API image (if Dockerfile present)
+      - name: Build API image
         run: |
           docker build -t app2-api:ci -f src/App2.Api/Dockerfile .
       - name: Trivy image scan
@@ -93,3 +96,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-image.sarif
+          category: trivy-image
