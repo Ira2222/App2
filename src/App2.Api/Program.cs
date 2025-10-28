@@ -2,6 +2,7 @@ using System.Linq;
 using System.Reflection;
 using App2.Api.Endpoints.Todos;
 using App2.Api.Extensions;
+using App2.Api.Options;
 using App2.Application.Common.Behaviors;
 using App2.Application.Features.Todos.Commands;
 using App2.Application.Features.Todos.Validators;
@@ -70,8 +71,19 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 builder.Services.AddScoped<ITodoRepository, TodoRepository>();
 
 var features = builder.Configuration.GetSection("Features");
+var outputCachingEnabled = features.GetValue("OutputCaching", false);
 
-builder.Services.AddAppData(builder.Configuration, builder.Environment);
+builder.Services.AddOptions<DatabaseOptions>()
+    .Bind(builder.Configuration.GetSection(DatabaseOptions.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(
+        options => builder.Environment.IsDevelopment()
+            || builder.Environment.IsEnvironment("Testing")
+            || !string.IsNullOrWhiteSpace(options.GetConnectionStringForProvider()),
+        "A database connection string must be configured for the selected provider in non-development environments.")
+    .ValidateOnStart();
+
+builder.Services.AddAppData(builder.Environment);
 builder.Services.AddOutputCacheWithOptionalRedis(builder.Configuration);
 
 var authenticationEnabled = false;
@@ -112,18 +124,19 @@ builder.Services.AddHealthChecksWithSplit();
 
 var app = builder.Build();
 
-app.UseSerilogRequestLogging();
-app.UseExceptionHandler();
-app.UseStatusCodePages();
-app.UseHttpsRedirection();
-
 if (features.GetValue("SecurityHeaders", false))
 {
     app.UseSecurityHeaders(builder.Configuration);
 }
 
+app.UseSerilogRequestLogging();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseHttpsRedirection();
+
 if (features.GetValue("CORS", false))
 {
+    app.UseCorsVaryHeader();
     app.UseCors("AllowedOrigins");
 }
 
@@ -138,7 +151,7 @@ if (features.GetValue("RateLimiting", false))
     app.UseRateLimiter();
 }
 
-if (features.GetValue("OutputCaching", false))
+if (outputCachingEnabled)
 {
     app.UseOutputCache();
 }
@@ -156,7 +169,7 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.MapHealthEndpoints();
-app.MapTodosEndpoints(authenticationEnabled);
+app.MapTodosEndpoints(authenticationEnabled, outputCachingEnabled);
 app.MapControllers();
 
 app.ValidateRequiredConfiguration(builder.Configuration, app.Environment);
