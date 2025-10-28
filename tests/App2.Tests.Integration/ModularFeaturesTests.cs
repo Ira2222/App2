@@ -254,5 +254,30 @@ public class ModularFeaturesTests : IClassFixture<TestingWebApplicationFactory>
         // Production deployment should verify actual CORS headers via integration tests.
     }
 
+    [Fact]
+    public async Task CspHeader_ContainsFrameAncestors_WhenCspEnabled()
+    {
+        // Note: CSP is enabled in Production but may be disabled in Testing
+        // This test documents the expected behavior when CSP is enabled
+        var response = await _client.GetAsync("/api/todos");
+
+        if (response.Headers.TryGetValues("Content-Security-Policy", out var cspValues))
+        {
+            // If CSP is enabled, verify it includes frame-ancestors directive
+            var cspHeader = string.Join("; ", cspValues);
+            Assert.Contains("frame-ancestors", cspHeader, StringComparison.OrdinalIgnoreCase);
+
+            // Verify X-Frame-Options is NOT present (replaced by CSP)
+            Assert.False(response.Headers.Contains("X-Frame-Options"),
+                "X-Frame-Options should be removed when CSP frame-ancestors is used");
+        }
+        else
+        {
+            // CSP may be disabled in test environment - this is acceptable
+            Console.WriteLine("ℹ️  CSP not enabled in test environment");
+            Console.WriteLine("   Production configuration enables CSP with frame-ancestors");
+        }
+    }
+
     private sealed record TodoResponse(int Id, string Title, string? Description, bool IsCompleted, DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt);
 }

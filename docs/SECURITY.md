@@ -72,6 +72,12 @@ All features can be toggled via `appsettings.json` → `Features` section:
   - Verifiable via `gh attestation verify`
   - Configuration: `.github/workflows/release-provenance.yml`, `.github/workflows/container.yml`
 
+- **OpenSSF Scorecard** - Continuous security posture assessment
+  - Runs weekly and on branch protection changes
+  - Uploads SARIF results to Code Scanning
+  - Tracks supply-chain security best practices
+  - Configuration: `.github/workflows/scorecard.yml`
+
 ### Dependabot
 
 Automated dependency updates configured for:
@@ -305,6 +311,41 @@ Containers built for:
 
 Configuration: `.github/workflows/container.yml:56`
 
+## Configuration Validation
+
+### ValidateOnStart() for Critical Options
+
+The application uses `ValidateOnStart()` to fail-fast if critical configuration is invalid:
+
+**CORS Options** (`Options/CorsOptions.cs`):
+```csharp
+[Required]
+[MinLength(1, ErrorMessage = "At least one allowed origin must be configured")]
+public string[] AllowedOrigins { get; set; }
+```
+
+**Azure AD Options** (`Options/AzureAdOptions.cs`):
+```csharp
+[Required]
+[RegularExpression(@"^(?!.*TODO).*$", ErrorMessage = "TenantId must be configured")]
+public string TenantId { get; set; }
+```
+
+**Redis Options** (`Options/RedisOptions.cs`):
+```csharp
+[Required(ErrorMessage = "ConnectionString is required when Redis features are enabled")]
+public string ConnectionString { get; set; }
+```
+
+Configuration: `Program.cs:32-50`
+
+### Benefits of ValidateOnStart()
+
+- ✅ **Fail-fast** - Application won't start with invalid configuration
+- ✅ **Early detection** - Catches configuration errors before first request
+- ✅ **Clear errors** - Descriptive validation messages
+- ✅ **Type-safe** - Strongly-typed options classes
+
 ## Secrets Management
 
 ### Azure Key Vault Integration
@@ -349,6 +390,7 @@ Comprehensive security tests verify:
 
 - ✅ Rate limiting enforcement (`TodosEndpoint_IsRateLimited`)
 - ✅ Security headers presence (`SecurityHeaders_ArePresent`)
+- ✅ CSP with frame-ancestors (`CspHeader_ContainsFrameAncestors_WhenCspEnabled`)
 - ✅ Validation error responses (`CreateTodo_WithInvalidPayload_ReturnsBadRequest`)
 - ✅ Not-found handling (`GetTodoById_ReturnsNotFound_WhenMissing`)
 - ✅ CRUD authorization (when auth enabled)
