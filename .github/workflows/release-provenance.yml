@@ -43,7 +43,7 @@ jobs:
 
       - name: Package web dist
         run: |
-          (cd apps/web && zip -r "../$ART_DIR/web-dist.zip" dist)
+          (cd apps/web && zip -r "../../$ART_DIR/web-dist.zip" dist)
 
       - name: Attest zipped artifacts (SLSA provenance)
         uses: actions/attest-build-provenance@v3
