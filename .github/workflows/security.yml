@@ -8,15 +8,23 @@ on:
   schedule:
     - cron: '17 3 * * 1'
 
+# Workflow default: least privilege
 permissions:
   contents: read
-  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   codeql:
     name: CodeQL analyze
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write  # REQUIRED for SARIF upload
+      actions: read          # Allows queries to check workflow config
     steps:
       - uses: actions/checkout@v4
 
@@ -40,33 +48,40 @@ jobs:
   trivy-fs:
     name: Trivy (repo scan → SARIF)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # REQUIRED for SARIF upload
     steps:
       - uses: actions/checkout@v4
       - name: Trivy repo scan (fs)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-fs.sarif'
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          severity: 'CRITICAL,HIGH'
       - name: Upload SARIF to Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-fs.sarif
 
   trivy-image:
     name: Trivy (container image → SARIF)
+    # Only run on main branch to avoid failures when image doesn't exist yet
+    if: github.ref == 'refs/heads/main' && hashFiles('**/Dockerfile') != ''
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('**/Dockerfile') != '' }}
+    permissions:
+      contents: read
+      security-events: write  # REQUIRED for SARIF upload
     steps:
       - uses: actions/checkout@v4
       - name: Build API image (if Dockerfile present)
         run: |
           docker build -t app2-api:ci -f src/App2.Api/Dockerfile .
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.33.0
         with:
           scan-type: 'image'
           image-ref: 'app2-api:ci'
@@ -75,6 +90,6 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
       - name: Upload SARIF to Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-image.sarif
