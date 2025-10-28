@@ -1,33 +1,24 @@
 import { useEffect, useState } from 'react';
-
-type Todo = {
-  id: number;
-  title: string;
-  description?: string | null;
-  isCompleted: boolean;
-};
+import { createApiClient, type TodoDto, ApiError } from './api';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const api = createApiClient({ baseUrl: API_BASE });
 
 export default function App() {
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState<TodoDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const response = await fetch(`${API_BASE}/api/todos`, {
-          headers: { Accept: 'application/json' }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        const data: Todo[] = await response.json();
+        const data = await api.getTodos();
         setTodos(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        if (err instanceof ApiError) {
+          setError(`${err.message} (Status: ${err.status})`);
+        } else {
+          setError(err instanceof Error ? err.message : 'Unknown error');
+        }
       }
     }
 
