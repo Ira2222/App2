@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Linq;
 using App2.Api.Endpoints.Todos;
 using App2.Api.Extensions;
 using App2.Application.Common.Behaviors;
@@ -11,6 +12,7 @@ using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
 using Serilog;
 
@@ -30,6 +32,22 @@ builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
     {
+        if (context.Exception is ValidationException validationException)
+        {
+            var errors = validationException.Errors
+                .GroupBy(failure => failure.PropertyName, failure => failure.ErrorMessage)
+                .ToDictionary(group => group.Key, group => group.ToArray());
+
+            context.ProblemDetails = new HttpValidationProblemDetails(errors)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred.",
+                Instance = context.HttpContext.Request.Path
+            };
+
+            context.HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
+
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
     };
 });

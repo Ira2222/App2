@@ -14,6 +14,11 @@ public static class CorsExtensions
                     origins = new[] { "http://localhost:5173" };
                 }
 
+                if (origins.Any(origin => origin == "*"))
+                {
+                    throw new InvalidOperationException("Cors:AllowedOrigins must be explicit when credentials are enabled.");
+                }
+
                 var methods = configuration.GetSection("Cors:AllowedMethods").Get<string[]>() ?? new[] { "GET", "POST" };
                 var headers = configuration.GetSection("Cors:AllowedHeaders").Get<string[]>() ?? new[] { "Content-Type", "Authorization" };
 

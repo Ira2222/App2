@@ -2,7 +2,6 @@ using App2.Api.Constants;
 using App2.Application.Features.Todos.Commands;
 using App2.Application.Features.Todos.Dtos;
 using App2.Application.Features.Todos.Queries;
-using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.OutputCaching;
@@ -59,17 +58,8 @@ public static class TodosEndpointGroup
         IOutputCacheStore cache,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var created = await mediator.Send(command, cancellationToken);
-            await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
-            return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
-        }
-        catch (FluentValidation.ValidationException ex)
-        {
-            return TypedResults.ValidationProblem(ex.Errors.ToDictionary(
-                failure => failure.PropertyName,
-                failure => new[] { failure.ErrorMessage }));
-        }
+        var created = await mediator.Send(command, cancellationToken);
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
     }
 }

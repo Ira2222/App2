@@ -11,6 +11,7 @@ public static class SecurityHeadersExtensions
     {
         var policies = new HeaderPolicyCollection();
         policies.AddDefaultSecurityHeaders();
+        policies.RemoveCustomHeader("X-Frame-Options");
 
         if (configuration.GetValue("SecurityHeaders:Csp:Enabled", false))
         {
@@ -38,6 +39,8 @@ public static class SecurityHeadersExtensions
 
                 var connectSrc = builder.AddConnectSrc();
                 connectSrc.Self();
+
+                builder.AddFrameAncestors().None();
             });
         }
 
