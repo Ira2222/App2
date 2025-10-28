@@ -2,7 +2,6 @@ using App2.Api.Constants;
 using App2.Application.Features.Todos.Commands;
 using App2.Application.Features.Todos.Dtos;
 using App2.Application.Features.Todos.Queries;
-using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.OutputCaching;
@@ -33,7 +32,7 @@ public static class TodosEndpointGroup
         var postEndpoint = group.MapPost("/", CreateTodoAsync)
             .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
             .Produces<TodoDto>(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem();
 
         if (requireAuthorization)
         {
@@ -63,7 +62,7 @@ public static class TodosEndpointGroup
             .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
             .Produces<TodoDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem();
 
         if (requireAuthorization)
         {
@@ -97,24 +96,15 @@ public static class TodosEndpointGroup
         return TypedResults.Ok(todos);
     }
 
-    private static async Task<Results<Created<TodoDto>, ValidationProblem>> CreateTodoAsync(
+    private static async Task<Created<TodoDto>> CreateTodoAsync(
         CreateTodoCommand command,
         IMediator mediator,
         IOutputCacheStore cache,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var created = await mediator.Send(command, cancellationToken);
-            await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
-            return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
-        }
-        catch (FluentValidation.ValidationException ex)
-        {
-            return TypedResults.ValidationProblem(ex.Errors.ToDictionary(
-                failure => failure.PropertyName,
-                failure => new[] { failure.ErrorMessage }));
-        }
+        var created = await mediator.Send(command, cancellationToken);
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
     }
 
     private static async Task<Results<Ok<TodoDto>, NotFound>> GetTodoByIdAsync(
@@ -128,33 +118,24 @@ public static class TodosEndpointGroup
             : TypedResults.NotFound();
     }
 
-    private static async Task<Results<Ok<TodoDto>, NotFound, ValidationProblem>> UpdateTodoAsync(
+    private static async Task<Results<Ok<TodoDto>, NotFound>> UpdateTodoAsync(
         int id,
         UpdateTodoCommand command,
         IMediator mediator,
         IOutputCacheStore cache,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            // Ensure the ID from the route matches the command
-            var commandWithId = command with { Id = id };
-            var updated = await mediator.Send(commandWithId, cancellationToken);
+        // Ensure the ID from the route matches the command
+        var commandWithId = command with { Id = id };
+        var updated = await mediator.Send(commandWithId, cancellationToken);
 
-            if (updated is null)
-            {
-                return TypedResults.NotFound();
-            }
-
-            await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
-            return TypedResults.Ok(updated);
-        }
-        catch (FluentValidation.ValidationException ex)
+        if (updated is null)
         {
-            return TypedResults.ValidationProblem(ex.Errors.ToDictionary(
-                failure => failure.PropertyName,
-                failure => new[] { failure.ErrorMessage }));
+            return TypedResults.NotFound();
         }
+
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        return TypedResults.Ok(updated);
     }
 
     private static async Task<Results<NoContent, NotFound>> DeleteTodoAsync(

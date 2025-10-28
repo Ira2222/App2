@@ -11,6 +11,7 @@ public static class SecurityHeadersExtensions
     {
         var policies = new HeaderPolicyCollection();
         policies.AddDefaultSecurityHeaders();
+        policies.RemoveCustomHeader("X-Frame-Options"); // Using CSP frame-ancestors instead
 
         if (configuration.GetValue("SecurityHeaders:Csp:Enabled", false))
         {
@@ -38,6 +39,9 @@ public static class SecurityHeadersExtensions
 
                 var connectSrc = builder.AddConnectSrc();
                 connectSrc.Self();
+
+                // Modern clickjacking protection (replaces X-Frame-Options)
+                builder.AddFrameAncestors().None();
             });
         }
 
