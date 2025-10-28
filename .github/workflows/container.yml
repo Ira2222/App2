@@ -49,10 +49,11 @@ jobs:
 
       - name: Build and push
         id: push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: src/App2.Api/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           provenance: true
           tags: ${{ steps.meta.outputs.tags }}

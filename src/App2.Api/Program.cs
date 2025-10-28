@@ -41,7 +41,7 @@ builder.Services.AddProblemDetails(options =>
 
             context.ProblemDetails = new HttpValidationProblemDetails(errors)
             {
-                Type = "https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.1",
+                Type = "https://datatracker.ietf.org/doc/html/rfc9457",
                 Title = "One or more validation errors occurred.",
                 Status = StatusCodes.Status400BadRequest,
                 Instance = context.HttpContext.Request.Path
