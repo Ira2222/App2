@@ -52,6 +52,9 @@ public class ModularFeaturesTests : IClassFixture<TestingWebApplicationFactory>
 
         var results = await Task.WhenAll(tasks);
         Assert.Contains(results, r => r.StatusCode == HttpStatusCode.TooManyRequests);
+
+        // Allow the fixed window limiter to replenish before other tests run
+        await Task.Delay(TimeSpan.FromMilliseconds(1200));
     }
 
     [Fact]
@@ -128,6 +131,89 @@ public class ModularFeaturesTests : IClassFixture<TestingWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/todos", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTodoById_ReturnsOk()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/todos", new { title = "lookup", description = "by id" });
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoResponse>();
+
+        var response = await _client.GetAsync($"/api/todos/{created!.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var todo = await response.Content.ReadFromJsonAsync<TodoResponse>();
+        Assert.Equal(created.Id, todo!.Id);
+    }
+
+    [Fact]
+    public async Task GetTodoById_ReturnsNotFound_WhenMissing()
+    {
+        var response = await _client.GetAsync("/api/todos/9999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateTodo_ReturnsOk()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/todos", new { title = "update me", description = "desc" });
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoResponse>();
+
+        var updatePayload = new { title = "updated", description = "changed", isCompleted = true };
+        var response = await _client.PutAsJsonAsync($"/api/todos/{created!.Id}", updatePayload);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<TodoResponse>();
+        Assert.Equal("updated", updated!.Title);
+        Assert.True(updated.IsCompleted);
+        Assert.NotNull(updated.CompletedAt);
+    }
+
+    [Fact]
+    public async Task UpdateTodo_ReturnsNotFound_WhenMissing()
+    {
+        var response = await _client.PutAsJsonAsync("/api/todos/9876", new { title = "missing", description = "none", isCompleted = false });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateTodo_ReturnsBadRequest_WhenInvalid()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/todos", new { title = "needs validation", description = "desc" });
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoResponse>();
+
+        var invalidPayload = new { title = string.Empty, description = "desc", isCompleted = false };
+        var response = await _client.PutAsJsonAsync($"/api/todos/{created!.Id}", invalidPayload);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTodo_ReturnsNoContent()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/todos", new { title = "delete", description = "me" });
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoResponse>();
+
+        var response = await _client.DeleteAsync($"/api/todos/{created!.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTodo_ReturnsNotFound_WhenMissing()
+    {
+        var response = await _client.DeleteAsync("/api/todos/4321");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

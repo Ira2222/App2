@@ -41,11 +41,14 @@ builder.Services.AddProblemDetails(options =>
 
             context.ProblemDetails = new HttpValidationProblemDetails(errors)
             {
-                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                Type = "https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.1",
                 Title = "One or more validation errors occurred.",
                 Status = StatusCodes.Status400BadRequest,
                 Instance = context.HttpContext.Request.Path
             };
+
+            // Set the response status code to ensure the exception handler uses 400 not 500
+            context.HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
 
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
