@@ -25,6 +25,10 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IDis
             {
                 ["Features:KeyVault"] = "false",
                 ["Features:Authentication"] = "false",
+                ["Features:SecurityHeaders"] = "true",
+                ["Features:RateLimiting"] = "true",
+                ["Features:OutputCaching"] = "true",
+                ["Features:CORS"] = "true",
                 ["Security:DevHeader:Enabled"] = "true",
                 ["Data:Provider"] = "Sqlite"
             });
