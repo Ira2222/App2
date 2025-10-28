@@ -63,75 +63,26 @@ fi
 echo "✅ Tests passed"
 echo ""
 
-# ==== export swagger & generate TS client ====
-echo "📋 Exporting OpenAPI specification from Swagger..."
-
-# start API on configured port, wait for swagger, capture PID, then kill
-dotnet run --project src/App2.Api --no-build -c Release >/tmp/app2-api.log 2>&1 &
-API_PID=$!
-trap 'kill $API_PID >/dev/null 2>&1 || true' EXIT
-
-echo "⏳ Waiting for Swagger endpoint to be available..."
-for i in {1..60}; do
-  if curl -fsS http://localhost:${API_PORT}/swagger/v1/swagger.json >/dev/null 2>&1; then
-    echo "   ✅ Swagger endpoint ready"
-    break
-  fi
-  if [ $i -eq 60 ]; then
-    echo "   ❌ Swagger endpoint not available after 60 seconds"
-    echo "   API logs:"
-    cat /tmp/app2-api.log
-    exit 1
-  fi
-  sleep 1
-done
-
-# export and validate JSON
-mkdir -p openapi
-echo "📥 Downloading and validating OpenAPI spec..."
-if curl -fsS http://localhost:${API_PORT}/swagger/v1/swagger.json | tee openapi/app2.openapi.json | jq empty; then
-  echo "   ✅ OpenAPI spec exported and validated"
+# ==== verify OpenAPI spec exists ====
+echo "📋 Verifying OpenAPI specification..."
+if [ -f "openapi/app2.openapi.json" ]; then
+  echo "   ✅ OpenAPI spec found: openapi/app2.openapi.json"
+  echo "   ℹ️  Using handcrafted TypeScript client (see ADR 001)"
 else
-  echo "   ❌ Swagger returned invalid JSON"
-  kill "$API_PID" || true
-  trap - EXIT
+  echo "   ⚠️  OpenAPI spec not found - export manually if needed:"
+  echo "      ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/App2.Api"
+  echo "      curl http://localhost:5000/swagger/v1/swagger.json > openapi/app2.openapi.json"
+fi
+echo ""
+
+# ==== commit any changes ====
+echo "📝 Checking for uncommitted changes..."
+if git diff --quiet && git diff --staged --quiet; then
+  echo "   ℹ️  No changes to commit"
+else
+  echo "   📝 Uncommitted changes found - please commit them first"
+  git status --short
   exit 1
-fi
-
-# kill API and remove trap
-kill "$API_PID" || true
-trap - EXIT
-echo "   ✅ API stopped"
-echo ""
-
-# generate TypeScript client into apps/web/src/api
-echo "🔨 Generating TypeScript client..."
-cd apps/web
-
-# ensure openapi-generator-cli is installed
-if [ ! -d "node_modules/@openapitools/openapi-generator-cli" ]; then
-  echo "   📦 Installing @openapitools/openapi-generator-cli..."
-  npm install
-fi
-
-# generate client (note: path is relative to apps/web)
-npm exec --yes @openapitools/openapi-generator-cli -- generate \
-  -i ../../openapi/app2.openapi.json \
-  -g typescript-fetch \
-  -o src/api \
-  --additional-properties=typescriptThreePlus=true,withoutPrefixEnums=true,supportsES6=true
-
-cd "$ROOT"
-echo "   ✅ TypeScript client generated in apps/web/src/api/"
-echo ""
-
-# note: client is gitignored; we only commit the OpenAPI spec JSON
-echo "📝 Committing OpenAPI spec..."
-git add openapi/app2.openapi.json
-if git commit -m "chore(openapi): export spec & regenerate TS client" 2>/dev/null; then
-  echo "   ✅ Committed OpenAPI spec"
-else
-  echo "   ℹ️  No changes to commit (spec unchanged)"
 fi
 echo ""
 
