@@ -69,7 +69,7 @@ else if (builder.Configuration.GetValue("Security:DevHeader:Enabled", false) && 
 
 if (features.GetValue("CORS", false))
 {
-    builder.Services.AddCorsAllowList(builder.Configuration);
+    builder.Services.AddCorsAllowList(builder.Configuration, builder.Environment);
 }
 
 if (features.GetValue("RateLimiting", false))
