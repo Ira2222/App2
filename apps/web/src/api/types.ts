@@ -17,6 +17,12 @@ export interface CreateTodoRequest {
   description?: string | null;
 }
 
+export interface UpdateTodoRequest {
+  title: string;
+  description?: string | null;
+  isCompleted: boolean;
+}
+
 export interface ProblemDetails {
   type?: string | null;
   title?: string | null;

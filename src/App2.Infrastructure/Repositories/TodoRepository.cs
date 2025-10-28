@@ -19,10 +19,35 @@ public sealed class TodoRepository : ITodoRepository
         return await _dbContext.Todos.AsNoTracking().ToListAsync(cancellationToken);
     }
 
+    public async Task<Todo?> GetByIdAsync(int id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Todos.FindAsync(new object[] { id }, cancellationToken);
+    }
+
     public async Task<Todo> AddAsync(Todo todo, CancellationToken cancellationToken)
     {
         _dbContext.Todos.Add(todo);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return todo;
+    }
+
+    public async Task<Todo> UpdateAsync(Todo todo, CancellationToken cancellationToken)
+    {
+        _dbContext.Todos.Update(todo);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return todo;
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
+    {
+        var todo = await _dbContext.Todos.FindAsync(new object[] { id }, cancellationToken);
+        if (todo is null)
+        {
+            return false;
+        }
+
+        _dbContext.Todos.Remove(todo);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }
