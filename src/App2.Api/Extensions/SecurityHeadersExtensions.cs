@@ -1,5 +1,4 @@
 using NetEscapades.AspNetCore.SecurityHeaders;
-using NetEscapades.AspNetCore.SecurityHeaders.Infrastructure;
 
 namespace App2.Api.Extensions;
 
@@ -11,40 +10,26 @@ public static class SecurityHeadersExtensions
     {
         var policies = new HeaderPolicyCollection();
         policies.AddDefaultSecurityHeaders();
-        policies.RemoveCustomHeader("X-Frame-Options"); // Using CSP frame-ancestors instead
+
+        // Remove legacy X-Frame-Options; use CSP frame-ancestors instead.
+        policies.RemoveCustomHeader("X-Frame-Options");
 
         if (configuration.GetValue("SecurityHeaders:Csp:Enabled", false))
         {
             policies.AddContentSecurityPolicy(builder =>
             {
                 builder.AddDefaultSrc().Self();
+                builder.AddScriptSrc().Self().WithNonce();
+                builder.AddStyleSrc().Self().UnsafeInline();
+                builder.AddImgSrc().Self().Data();
+                builder.AddConnectSrc().Self();
 
-                var scriptSrc = builder.AddScriptSrc();
-                scriptSrc.Self();
-
-                var styleSrc = builder.AddStyleSrc();
-                styleSrc.Self();
-                if (configuration.GetValue("SecurityHeaders:Csp:AllowUnsafeInlineStyles", false))
-                {
-                    styleSrc.UnsafeInline();
-                }
-
-                var imgSrc = builder.AddImgSrc();
-                imgSrc.Self();
-                imgSrc.Data();
-
-                var fontSrc = builder.AddFontSrc();
-                fontSrc.Self();
-                fontSrc.Data();
-
-                var connectSrc = builder.AddConnectSrc();
-                connectSrc.Self();
-
-                // Modern clickjacking protection (replaces X-Frame-Options)
+                // Critical: disallow embedding
                 builder.AddFrameAncestors().None();
             });
         }
 
-        return app.UseSecurityHeaders(policies);
+        app.UseSecurityHeaders(policies);
+        return app;
     }
 }
