@@ -32,7 +32,7 @@ public static class TodosEndpointGroup
         var postEndpoint = group.MapPost("/", CreateTodoAsync)
             .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
             .Produces<TodoDto>(StatusCodes.Status201Created)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem();
 
         if (requireAuthorization)
         {
@@ -41,6 +41,50 @@ public static class TodosEndpointGroup
         else
         {
             postEndpoint.AllowAnonymous();
+        }
+
+        var getByIdEndpoint = group.MapGet("/{id:int}", GetTodoByIdAsync)
+            .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
+            .CacheOutput(AppConstants.Cache.TodosPolicy)
+            .Produces<TodoDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
+
+        if (requireAuthorization)
+        {
+            getByIdEndpoint.RequireAuthorization("Todo.Read");
+        }
+        else
+        {
+            getByIdEndpoint.AllowAnonymous();
+        }
+
+        var putEndpoint = group.MapPut("/{id:int}", UpdateTodoAsync)
+            .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
+            .Produces<TodoDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
+
+        if (requireAuthorization)
+        {
+            putEndpoint.RequireAuthorization("Todo.Write");
+        }
+        else
+        {
+            putEndpoint.AllowAnonymous();
+        }
+
+        var deleteEndpoint = group.MapDelete("/{id:int}", DeleteTodoAsync)
+            .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
+        if (requireAuthorization)
+        {
+            deleteEndpoint.RequireAuthorization("Todo.Write");
+        }
+        else
+        {
+            deleteEndpoint.AllowAnonymous();
         }
 
         return builder;
@@ -52,7 +96,7 @@ public static class TodosEndpointGroup
         return TypedResults.Ok(todos);
     }
 
-    private static async Task<Results<Created<TodoDto>, ValidationProblem>> CreateTodoAsync(
+    private static async Task<Created<TodoDto>> CreateTodoAsync(
         CreateTodoCommand command,
         IMediator mediator,
         IOutputCacheStore cache,
@@ -61,5 +105,52 @@ public static class TodosEndpointGroup
         var created = await mediator.Send(command, cancellationToken);
         await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
         return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
+    }
+
+    private static async Task<Results<Ok<TodoDto>, NotFound>> GetTodoByIdAsync(
+        int id,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var todo = await mediator.Send(new GetTodoByIdQuery(id), cancellationToken);
+        return todo is not null
+            ? TypedResults.Ok(todo)
+            : TypedResults.NotFound();
+    }
+
+    private static async Task<Results<Ok<TodoDto>, NotFound>> UpdateTodoAsync(
+        int id,
+        UpdateTodoCommand command,
+        IMediator mediator,
+        IOutputCacheStore cache,
+        CancellationToken cancellationToken)
+    {
+        // Ensure the ID from the route matches the command
+        var commandWithId = command with { Id = id };
+        var updated = await mediator.Send(commandWithId, cancellationToken);
+
+        if (updated is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        return TypedResults.Ok(updated);
+    }
+
+    private static async Task<Results<NoContent, NotFound>> DeleteTodoAsync(
+        int id,
+        IMediator mediator,
+        IOutputCacheStore cache,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await mediator.Send(new DeleteTodoCommand(id), cancellationToken);
+        if (!deleted)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        return TypedResults.NoContent();
     }
 }

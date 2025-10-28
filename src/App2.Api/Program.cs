@@ -1,5 +1,5 @@
-using System.Reflection;
 using System.Linq;
+using System.Reflection;
 using App2.Api.Endpoints.Todos;
 using App2.Api.Extensions;
 using App2.Application.Common.Behaviors;
@@ -32,6 +32,7 @@ builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
     {
+        // Handle FluentValidation exceptions centrally
         if (context.Exception is ValidationException validationException)
         {
             var errors = validationException.Errors
@@ -40,11 +41,13 @@ builder.Services.AddProblemDetails(options =>
 
             context.ProblemDetails = new HttpValidationProblemDetails(errors)
             {
-                Status = StatusCodes.Status400BadRequest,
+                Type = "https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.1",
                 Title = "One or more validation errors occurred.",
+                Status = StatusCodes.Status400BadRequest,
                 Instance = context.HttpContext.Request.Path
             };
 
+            // Set the response status code to ensure the exception handler uses 400 not 500
             context.HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
 

@@ -3,7 +3,7 @@
  * Based on OpenAPI specification
  */
 
-import type { TodoDto, CreateTodoRequest, ProblemDetails } from './types';
+import type { TodoDto, CreateTodoRequest, UpdateTodoRequest, ProblemDetails } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -93,6 +93,61 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(todo)
     });
+  }
+
+  /**
+   * Get a todo by ID
+   * @param id - The todo ID
+   * @returns The todo or null if not found
+   */
+  async getTodoById(id: number): Promise<TodoDto | null> {
+    try {
+      return await this.request<TodoDto>(`/api/todos/${id}`);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing todo
+   * @param id - The todo ID
+   * @param todo - The updated todo data
+   * @returns The updated todo or null if not found
+   */
+  async updateTodo(id: number, todo: UpdateTodoRequest): Promise<TodoDto | null> {
+    try {
+      return await this.request<TodoDto>(`/api/todos/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(todo)
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a todo
+   * @param id - The todo ID
+   * @returns true if deleted, false if not found
+   */
+  async deleteTodo(id: number): Promise<boolean> {
+    try {
+      await this.request<void>(`/api/todos/${id}`, {
+        method: 'DELETE'
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return false;
+      }
+      throw error;
+    }
   }
 }
 
