@@ -1,3 +1,10 @@
+using System;
+using System.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace App2.Api.Extensions;
 
 public static class CorsExtensions
@@ -33,5 +40,18 @@ public static class CorsExtensions
         });
 
         return services;
+    }
+
+    public static IApplicationBuilder UseCorsVaryHeader(this IApplicationBuilder app)
+    {
+        return app.Use(async (context, next) =>
+        {
+            await next();
+
+            if (context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+            {
+                context.Response.Headers.AppendCommaSeparatedValues("Vary", "Origin");
+            }
+        });
     }
 }

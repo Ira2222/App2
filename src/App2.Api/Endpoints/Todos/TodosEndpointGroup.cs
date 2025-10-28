@@ -1,24 +1,29 @@
+using System;
 using App2.Api.Constants;
 using App2.Application.Features.Todos.Commands;
 using App2.Application.Features.Todos.Dtos;
 using App2.Application.Features.Todos.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace App2.Api.Endpoints.Todos;
 
 public static class TodosEndpointGroup
 {
-    public static IEndpointRouteBuilder MapTodosEndpoints(this IEndpointRouteBuilder builder, bool requireAuthorization)
+    public static IEndpointRouteBuilder MapTodosEndpoints(this IEndpointRouteBuilder builder, bool requireAuthorization, bool enableOutputCache)
     {
         var group = builder.MapGroup(AppConstants.Routes.TodosBase)
             .WithTags("Todos");
 
         var getEndpoint = group.MapGet("/", GetTodosAsync)
             .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
-            .CacheOutput(AppConstants.Cache.TodosPolicy)
             .Produces<IReadOnlyList<TodoDto>>(StatusCodes.Status200OK);
+
+        getEndpoint = ConfigureCaching(getEndpoint, enableOutputCache);
 
         if (requireAuthorization)
         {
@@ -45,9 +50,10 @@ public static class TodosEndpointGroup
 
         var getByIdEndpoint = group.MapGet("/{id:int}", GetTodoByIdAsync)
             .RequireRateLimiting(AppConstants.RateLimiting.FixedPolicy)
-            .CacheOutput(AppConstants.Cache.TodosPolicy)
             .Produces<TodoDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
+
+        getByIdEndpoint = ConfigureCaching(getByIdEndpoint, enableOutputCache);
 
         if (requireAuthorization)
         {
@@ -99,11 +105,11 @@ public static class TodosEndpointGroup
     private static async Task<Created<TodoDto>> CreateTodoAsync(
         CreateTodoCommand command,
         IMediator mediator,
-        IOutputCacheStore cache,
+        IServiceProvider services,
         CancellationToken cancellationToken)
     {
         var created = await mediator.Send(command, cancellationToken);
-        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        await EvictTodosCacheAsync(services, cancellationToken);
         return TypedResults.Created($"{AppConstants.Routes.TodosBase}/{created.Id}", created);
     }
 
@@ -122,7 +128,7 @@ public static class TodosEndpointGroup
         int id,
         UpdateTodoCommand command,
         IMediator mediator,
-        IOutputCacheStore cache,
+        IServiceProvider services,
         CancellationToken cancellationToken)
     {
         // Ensure the ID from the route matches the command
@@ -134,14 +140,14 @@ public static class TodosEndpointGroup
             return TypedResults.NotFound();
         }
 
-        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        await EvictTodosCacheAsync(services, cancellationToken);
         return TypedResults.Ok(updated);
     }
 
     private static async Task<Results<NoContent, NotFound>> DeleteTodoAsync(
         int id,
         IMediator mediator,
-        IOutputCacheStore cache,
+        IServiceProvider services,
         CancellationToken cancellationToken)
     {
         var deleted = await mediator.Send(new DeleteTodoCommand(id), cancellationToken);
@@ -150,7 +156,21 @@ public static class TodosEndpointGroup
             return TypedResults.NotFound();
         }
 
-        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
+        await EvictTodosCacheAsync(services, cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    private static RouteHandlerBuilder ConfigureCaching(RouteHandlerBuilder builder, bool enableOutputCache)
+        => enableOutputCache ? builder.CacheOutput(AppConstants.Cache.TodosPolicy) : builder;
+
+    private static async Task EvictTodosCacheAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var cache = services.GetService<IOutputCacheStore>();
+        if (cache is null)
+        {
+            return;
+        }
+
+        await cache.EvictByTagAsync(AppConstants.Cache.TodosTag, cancellationToken);
     }
 }

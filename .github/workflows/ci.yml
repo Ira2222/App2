@@ -69,6 +69,20 @@ jobs:
           name: web-dist
           path: apps/web/dist
 
+  package-audit:
+    name: Package audit (dotnet)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+      - name: dotnet package list --outdated
+        run: dotnet package list --outdated --include-transitive --highest-patch
+
   sbom:
     name: Generate SBOM (repo)
     runs-on: ubuntu-latest
