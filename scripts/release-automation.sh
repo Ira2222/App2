@@ -144,16 +144,19 @@ echo "   ✅ Tagged and pushed ${TAG_NAME}"
 echo ""
 
 # ==== summary ====
+OWNER_LOWER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+REPO_LOWER=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎉 Release automation complete!"
 echo ""
 echo "📦 Tag:        ${TAG_NAME}"
 echo "🔗 Repository: https://github.com/${OWNER}/${REPO}"
 echo "🏷️  Release:    https://github.com/${OWNER}/${REPO}/releases/tag/${TAG_NAME}"
-echo "🐳 Container:  ghcr.io/${OWNER,,}/${REPO,,}:${TAG_NAME}"
+echo "🐳 Container:  ghcr.io/${OWNER_LOWER}/${REPO_LOWER}:${TAG_NAME}"
 echo ""
 echo "Next steps:"
 echo "  1. Wait for release workflow to complete (creates GitHub release + GHCR image)"
 echo "  2. Verify release: gh release view ${TAG_NAME}"
-echo "  3. Verify image:   gh attestation verify oci://ghcr.io/${OWNER,,}/${REPO,,}:${TAG_NAME} --owner ${OWNER} --repo ${REPO}"
+echo "  3. Verify image:   gh attestation verify oci://ghcr.io/${OWNER_LOWER}/${REPO_LOWER}:${TAG_NAME} --owner ${OWNER} --repo ${REPO}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

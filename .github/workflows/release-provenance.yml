@@ -80,25 +80,29 @@ jobs:
           sudo apt install gh -y
 
       - name: Verify Release Attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Verifying release attestation for tag: $TAG_NAME"
-          
+
           if ! gh release verify "$TAG_NAME" -R "${{ github.repository }}" --format json > /tmp/release-verify.json 2>&1; then
             echo "❌ Release attestation verification failed"
             cat /tmp/release-verify.json
             exit 1
           fi
-          
+
           echo "✅ Release attestation verified successfully"
           cat /tmp/release-verify.json
 
       - name: Verify Container Attestation (if exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           IMAGE="ghcr.io/${{ github.repository }}:$TAG_NAME"
           echo "Verifying container attestation for image: $IMAGE"
-          
+
           # Check if image exists before verifying
           if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
             if ! gh attestation verify "oci://$IMAGE" --repo "${{ github.repository }}" --format json > /tmp/attestation-verify.json 2>&1; then
