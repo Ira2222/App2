@@ -88,6 +88,7 @@ echo -e "  ${GREEN}✓ Auto-delete head branches enabled${NC}"
 # Step 3: Security & analysis
 echo ""
 echo -e "${YELLOW}→ Enabling security features...${NC}"
+set +e
 cat <<'JSON' | gh api -X PATCH "repos/$REPO" -H "X-GitHub-Api-Version: 2022-11-28" --input - &> /dev/null
 {
   "security_and_analysis": {
@@ -97,15 +98,22 @@ cat <<'JSON' | gh api -X PATCH "repos/$REPO" -H "X-GitHub-Api-Version: 2022-11-2
   }
 }
 JSON
-echo -e "  ${GREEN}✓ Secret scanning enabled${NC}"
-echo -e "  ${GREEN}✓ Push protection enabled${NC}"
-echo -e "  ${GREEN}✓ Dependabot security updates enabled${NC}"
+if [ $? -ne 0 ]; then
+  echo -e "  ${YELLOW}⚠ Secret scanning/push protection unavailable (requires Pro/public repo)${NC}"
+  echo -e "  ${GREEN}✓ Dependabot security updates enabled (available on Free)${NC}"
+else
+  echo -e "  ${GREEN}✓ Secret scanning enabled${NC}"
+  echo -e "  ${GREEN}✓ Push protection enabled${NC}"
+  echo -e "  ${GREEN}✓ Dependabot security updates enabled${NC}"
+fi
+set -e
 
 # Step 4: Create environments
 new_env() {
     local ENV="$1"
 
     # Create environment with branch policy
+    set +e
     cat <<'JSON' | gh api -X PUT "repos/$REPO/environments/$ENV" -H "X-GitHub-Api-Version: 2022-11-28" --input - &> /dev/null
 {
   "deployment_branch_policy": {
@@ -114,6 +122,12 @@ new_env() {
   }
 }
 JSON
+    local result=$?
+    set -e
+
+    if [ $result -ne 0 ]; then
+        return 1
+    fi
 
     # Allow only main branch to deploy
     echo '{ "name": "main" }' | gh api -X POST "repos/$REPO/environments/$ENV/deployment-branch-policies" -H "X-GitHub-Api-Version: 2022-11-28" --input - &> /dev/null
@@ -121,16 +135,23 @@ JSON
 
 echo ""
 echo -e "${YELLOW}→ Creating environments...${NC}"
+set +e
 new_env dev
-echo -e "  ${GREEN}✓ dev environment created (main branch only)${NC}"
-new_env staging
-echo -e "  ${GREEN}✓ staging environment created (main branch only)${NC}"
-new_env prod
-echo -e "  ${GREEN}✓ prod environment created (main branch only)${NC}"
+if [ $? -eq 0 ]; then
+  echo -e "  ${GREEN}✓ dev environment created (main branch only)${NC}"
+  new_env staging
+  echo -e "  ${GREEN}✓ staging environment created (main branch only)${NC}"
+  new_env prod
+  echo -e "  ${GREEN}✓ prod environment created (main branch only)${NC}"
+else
+  echo -e "  ${YELLOW}⚠ Environments unavailable (requires Pro for private repos or public repo)${NC}"
+fi
+set -e
 
 # Step 5: Branch protection
 echo ""
 echo -e "${YELLOW}→ Configuring branch protection on main...${NC}"
+set +e
 cat <<'JSON' | gh api -X PUT "repos/$REPO/branches/main/protection" -H "X-GitHub-Api-Version: 2022-11-28" --input - &> /dev/null
 {
   "required_status_checks": {
@@ -149,15 +170,22 @@ cat <<'JSON' | gh api -X PUT "repos/$REPO/branches/main/protection" -H "X-GitHub
   "required_conversation_resolution": true
 }
 JSON
-echo -e "  ${GREEN}✓ Require CI to pass${NC}"
-echo -e "  ${GREEN}✓ Require 1 PR review${NC}"
-echo -e "  ${GREEN}✓ Dismiss stale reviews${NC}"
-echo -e "  ${GREEN}✓ Require conversation resolution${NC}"
-echo -e "  ${GREEN}✓ Disable force pushes and deletions${NC}"
+if [ $? -ne 0 ]; then
+  echo -e "  ${YELLOW}⚠ Branch protection unavailable (requires Pro for private repos or public repo)${NC}"
+  echo -e "  ${GRAY}  Manual setup: Settings → Branches → Add rule${NC}"
+else
+  echo -e "  ${GREEN}✓ Require CI to pass${NC}"
+  echo -e "  ${GREEN}✓ Require 1 PR review${NC}"
+  echo -e "  ${GREEN}✓ Dismiss stale reviews${NC}"
+  echo -e "  ${GREEN}✓ Require conversation resolution${NC}"
+  echo -e "  ${GREEN}✓ Disable force pushes and deletions${NC}"
+fi
+set -e
 
 # Step 6: CodeQL default setup
 echo ""
 echo -e "${YELLOW}→ Enabling CodeQL scanning...${NC}"
+set +e
 cat <<'JSON' | gh api -X PATCH "repos/$REPO/code-scanning/default-setup" -H "X-GitHub-Api-Version: 2022-11-28" --input - &> /dev/null
 {
   "state": "enabled",
@@ -165,8 +193,14 @@ cat <<'JSON' | gh api -X PATCH "repos/$REPO/code-scanning/default-setup" -H "X-G
   "languages": ["csharp","javascript","typescript"]
 }
 JSON
-echo -e "  ${GREEN}✓ CodeQL enabled (security-extended)${NC}"
-echo -e "  ${GREEN}✓ Languages: C#, JavaScript, TypeScript${NC}"
+if [ $? -ne 0 ]; then
+  echo -e "  ${YELLOW}⚠ CodeQL unavailable (requires Advanced Security for private repos or public repo)${NC}"
+  echo -e "  ${GRAY}  Manual setup: Security → Code scanning → Set up → Advanced${NC}"
+else
+  echo -e "  ${GREEN}✓ CodeQL enabled (security-extended)${NC}"
+  echo -e "  ${GREEN}✓ Languages: C#, JavaScript, TypeScript${NC}"
+fi
+set -e
 
 # Summary
 echo ""

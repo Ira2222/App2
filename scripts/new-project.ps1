@@ -91,6 +91,7 @@ Write-Host "  ✓ Auto-delete head branches enabled" -ForegroundColor Green
 # Step 3: Security & analysis
 Write-Host ""
 Write-Host "→ Enabling security features..." -ForegroundColor Yellow
+$ErrorActionPreference = "SilentlyContinue"
 @"
 {
   "security_and_analysis": {
@@ -100,14 +101,21 @@ Write-Host "→ Enabling security features..." -ForegroundColor Yellow
   }
 }
 "@ | gh api -X PATCH "repos/$repo" -H "X-GitHub-Api-Version: 2022-11-28" --input - 2>&1 | Out-Null
-Write-Host "  ✓ Secret scanning enabled" -ForegroundColor Green
-Write-Host "  ✓ Push protection enabled" -ForegroundColor Green
-Write-Host "  ✓ Dependabot security updates enabled" -ForegroundColor Green
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ⚠ Secret scanning/push protection unavailable (requires Pro/public repo)" -ForegroundColor Yellow
+    Write-Host "  ✓ Dependabot security updates enabled (available on Free)" -ForegroundColor Green
+} else {
+    Write-Host "  ✓ Secret scanning enabled" -ForegroundColor Green
+    Write-Host "  ✓ Push protection enabled" -ForegroundColor Green
+    Write-Host "  ✓ Dependabot security updates enabled" -ForegroundColor Green
+}
+$ErrorActionPreference = "Stop"
 
 # Step 4: Create environments
 function New-Env {
     param([string]$envName)
 
+    $ErrorActionPreference = "SilentlyContinue"
     # Create environment with branch policy
     @"
 {
@@ -118,24 +126,37 @@ function New-Env {
 }
 "@ | gh api -X PUT "repos/$repo/environments/$envName" -H "X-GitHub-Api-Version: 2022-11-28" --input - 2>&1 | Out-Null
 
+    if ($LASTEXITCODE -ne 0) {
+        $ErrorActionPreference = "Stop"
+        return $false
+    }
+
     # Allow only main branch to deploy
     @"
 { "name": "main" }
 "@ | gh api -X POST "repos/$repo/environments/$envName/deployment-branch-policies" -H "X-GitHub-Api-Version: 2022-11-28" --input - 2>&1 | Out-Null
+    $ErrorActionPreference = "Stop"
+    return $true
 }
 
 Write-Host ""
 Write-Host "→ Creating environments..." -ForegroundColor Yellow
-New-Env -envName "dev"
-Write-Host "  ✓ dev environment created (main branch only)" -ForegroundColor Green
-New-Env -envName "staging"
-Write-Host "  ✓ staging environment created (main branch only)" -ForegroundColor Green
-New-Env -envName "prod"
-Write-Host "  ✓ prod environment created (main branch only)" -ForegroundColor Green
+$ErrorActionPreference = "SilentlyContinue"
+if (New-Env -envName "dev") {
+    Write-Host "  ✓ dev environment created (main branch only)" -ForegroundColor Green
+    New-Env -envName "staging" | Out-Null
+    Write-Host "  ✓ staging environment created (main branch only)" -ForegroundColor Green
+    New-Env -envName "prod" | Out-Null
+    Write-Host "  ✓ prod environment created (main branch only)" -ForegroundColor Green
+} else {
+    Write-Host "  ⚠ Environments unavailable (requires Pro for private repos or public repo)" -ForegroundColor Yellow
+}
+$ErrorActionPreference = "Stop"
 
 # Step 5: Branch protection
 Write-Host ""
 Write-Host "→ Configuring branch protection on main..." -ForegroundColor Yellow
+$ErrorActionPreference = "SilentlyContinue"
 @"
 {
   "required_status_checks": {
@@ -154,15 +175,22 @@ Write-Host "→ Configuring branch protection on main..." -ForegroundColor Yello
   "required_conversation_resolution": true
 }
 "@ | gh api -X PUT "repos/$repo/branches/main/protection" -H "X-GitHub-Api-Version: 2022-11-28" --input - 2>&1 | Out-Null
-Write-Host "  ✓ Require CI to pass" -ForegroundColor Green
-Write-Host "  ✓ Require 1 PR review" -ForegroundColor Green
-Write-Host "  ✓ Dismiss stale reviews" -ForegroundColor Green
-Write-Host "  ✓ Require conversation resolution" -ForegroundColor Green
-Write-Host "  ✓ Disable force pushes and deletions" -ForegroundColor Green
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ⚠ Branch protection unavailable (requires Pro for private repos or public repo)" -ForegroundColor Yellow
+    Write-Host "    Manual setup: Settings → Branches → Add rule" -ForegroundColor Gray
+} else {
+    Write-Host "  ✓ Require CI to pass" -ForegroundColor Green
+    Write-Host "  ✓ Require 1 PR review" -ForegroundColor Green
+    Write-Host "  ✓ Dismiss stale reviews" -ForegroundColor Green
+    Write-Host "  ✓ Require conversation resolution" -ForegroundColor Green
+    Write-Host "  ✓ Disable force pushes and deletions" -ForegroundColor Green
+}
+$ErrorActionPreference = "Stop"
 
 # Step 6: CodeQL default setup
 Write-Host ""
 Write-Host "→ Enabling CodeQL scanning..." -ForegroundColor Yellow
+$ErrorActionPreference = "SilentlyContinue"
 @"
 {
   "state": "enabled",
@@ -170,8 +198,14 @@ Write-Host "→ Enabling CodeQL scanning..." -ForegroundColor Yellow
   "languages": ["csharp","javascript","typescript"]
 }
 "@ | gh api -X PATCH "repos/$repo/code-scanning/default-setup" -H "X-GitHub-Api-Version: 2022-11-28" --input - 2>&1 | Out-Null
-Write-Host "  ✓ CodeQL enabled (security-extended)" -ForegroundColor Green
-Write-Host "  ✓ Languages: C#, JavaScript, TypeScript" -ForegroundColor Green
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ⚠ CodeQL unavailable (requires Advanced Security for private repos or public repo)" -ForegroundColor Yellow
+    Write-Host "    Manual setup: Security → Code scanning → Set up → Advanced" -ForegroundColor Gray
+} else {
+    Write-Host "  ✓ CodeQL enabled (security-extended)" -ForegroundColor Green
+    Write-Host "  ✓ Languages: C#, JavaScript, TypeScript" -ForegroundColor Green
+}
+$ErrorActionPreference = "Stop"
 
 # Summary
 Write-Host ""
