@@ -38,11 +38,44 @@ git push
 ```
 
 **Next Steps After Creating**:
-1. Update `appsettings.json` with your Azure AD credentials (if using auth)
-2. Rename namespaces from `App2.*` to `YourProject.*` (search/replace across solution)
-3. Replace the Todo entity with your domain entities
-4. Update `README.md` with your project details
-5. Push changes - CI will run automatically
+1. **Enable git hooks** (auto-enabled by `new-project` scripts):
+   ```bash
+   git config core.hooksPath .githooks
+   chmod +x .githooks/pre-push
+   ```
+2. **Rename namespaces** using provided scripts:
+   ```bash
+   ./scripts/rename-from-template.sh YourProject
+   # OR: pwsh ./scripts/rename-from-template.ps1 -Name YourProject
+   ```
+3. Update `appsettings.json` with your Azure AD credentials (if using auth)
+4. Replace the Todo entity with your domain entities
+5. Update `README.md` with your project details
+6. Push changes - CI will run automatically
+
+### Free-Tier Guardrails
+
+This template includes security guardrails that work on **GitHub Free** private repos (no Pro/Advanced Security needed):
+
+**Local Protection**:
+- **Git Hook** (`.githooks/pre-push`): Blocks direct pushes to `main` branch
+  - Enforces pull request workflow
+  - Can bypass with `--no-verify` if needed
+  - Auto-enabled by `new-project` scripts
+
+**CI Security Scans** (PR-only to conserve Actions minutes):
+- **Gitleaks** (`.github/workflows/secrets.yml`): Scans for hardcoded secrets (API keys, passwords, tokens)
+- **Semgrep** (`.github/workflows/semgrep.yml`): Static analysis for security issues and anti-patterns
+- Both workflows trigger on pull requests and can be run manually via `workflow_dispatch`
+
+**Why PR-only?**
+These workflows run on every pull request but not on every push to conserve GitHub Actions minutes on the Free tier. For more aggressive scanning, add `push:` to the workflow triggers.
+
+**Manual Hook Setup** (if not using `new-project` scripts):
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+```
 
 ---
 

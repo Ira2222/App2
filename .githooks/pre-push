@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# pre-push hook - Block direct pushes to protected branches
+#
+# This hook prevents accidental direct pushes to the main branch,
+# enforcing a pull request workflow. It can be bypassed if needed
+# using: git push --no-verify
+#
+# Installation:
+#   git config core.hooksPath .githooks
+#   chmod +x .githooks/pre-push
+#
+
+# Protected branch regex - matches 'main'
+protected_branch_regex='^(main)$'
+
+# Get current branch name
+# Handle detached HEAD gracefully - allow pushes in detached HEAD state
+current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+
+# If we're in detached HEAD state, allow the push
+if [ "$current_branch" = "HEAD" ]; then
+    exit 0
+fi
+
+# Check if current branch matches protected branch
+if [[ "$current_branch" =~ $protected_branch_regex ]]; then
+    echo ""
+    echo "❌ Direct pushes to '$current_branch' are not allowed."
+    echo ""
+    echo "Please use a pull request workflow:"
+    echo "  1. Create a feature branch: git checkout -b feature/my-feature"
+    echo "  2. Make your changes and commit"
+    echo "  3. Push your branch: git push -u origin feature/my-feature"
+    echo "  4. Open a pull request on GitHub"
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git push --no-verify"
+    echo ""
+    exit 1
+fi
+
+# Allow push for all other branches
+exit 0

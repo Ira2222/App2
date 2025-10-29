@@ -81,6 +81,18 @@ try {
 
 Set-Location "$Name"
 
+# Step 1.5: Enable git hooks
+Write-Host ""
+Write-Host "→ Enabling git hooks..." -ForegroundColor Yellow
+git config core.hooksPath .githooks
+if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    # Windows - hooks should already be executable
+} else {
+    # Unix-like - make executable
+    chmod +x .githooks/pre-push
+}
+Write-Host "  ✓ Git hooks enabled (blocks direct pushes to main)" -ForegroundColor Green
+
 # Step 2: Repository settings
 Write-Host ""
 Write-Host "→ Configuring repository settings..." -ForegroundColor Yellow

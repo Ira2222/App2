@@ -78,6 +78,13 @@ fi
 
 cd "$NAME"
 
+# Step 1.5: Enable git hooks
+echo ""
+echo -e "${YELLOW}→ Enabling git hooks...${NC}"
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+echo -e "  ${GREEN}✓ Git hooks enabled (blocks direct pushes to main)${NC}"
+
 # Step 2: Repository settings
 echo ""
 echo -e "${YELLOW}→ Configuring repository settings...${NC}"
