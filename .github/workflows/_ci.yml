@@ -65,7 +65,7 @@ jobs:
           sbom-tool generate -b . -bc . -pn App2 -pv 1.0.0 -ps "Montgomery County FIN" -nsb https://github.com/${{ github.repository }}
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sbom
           path: _manifest/spdx_2.2/
