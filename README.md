@@ -173,8 +173,77 @@ docker compose -f docker/compose.redis.yml down -v
 >
 > `depends_on` ensures Redis starts before the API but does not wait for it to be healthy. The Redis service defines a healthcheck—wait for `docker compose ps` to show `(healthy)` (or use Compose v2 `condition: service_healthy`) before hitting the API.
 
+## Example Feature: Location CRUD
+
+This template includes a **complete Location CRUD implementation** as a reference for building your own features:
+
+### What's Included
+
+**Backend** (Clean Architecture + CQRS):
+- Domain entity with soft delete (`IsActive` flag)
+- Repository pattern with EF Core
+- MediatR commands and queries
+- FluentValidation rules
+- Minimal API endpoints with RFC 7807 error handling
+
+**Frontend** (React + TypeScript):
+- TypeScript types matching backend DTOs
+- API client with Problem Details support
+- Form component with client-side validation
+- List view with inline CRUD operations
+- Professional styling with CSS variables
+
+### Location Feature Details
+
+Located in:
+- **Backend**: `/Users/ira/Ai/LocationForm` - Complete ASP.NET Core implementation
+- **Frontend**: `apps/web/src/features/locations/` - React UI components
+
+**Fields**:
+- Name, Address (line 1, line 2, city, state, ZIP)
+- Organization hierarchy (Department, Division, Section)
+- Location type (Ship To / Bill To / Office / Internal Site)
+- Requester information (name, email, phone)
+- Soft delete support (Deactivate checkbox)
+
+**Features**:
+- ✅ Full CRUD (Create, Read, Update, Deactivate)
+- ✅ Radio buttons for location type selection
+- ✅ Inline form (always visible, switches create/edit mode)
+- ✅ Client and server validation matching
+- ✅ RFC 7807 Problem Details error handling
+- ✅ Same-origin API fallback
+
+### Using the Location Feature
+
+```bash
+# Start the Location API (LocationForm project)
+cd /Users/ira/Ai/LocationForm
+dotnet run --project src/LocationForm.Api
+# API: http://localhost:5187
+
+# Start the web app
+cd apps/web
+npm run dev
+# Web: http://localhost:5173/
+```
+
+The Location feature demonstrates:
+- Clean separation of concerns
+- Repository pattern implementation
+- CQRS with MediatR
+- FluentValidation integration
+- Minimal API organization
+- React Hook patterns
+- TypeScript strict typing
+
+**Reference Files**:
+- See `apps/web/src/features/locations/README.md` for detailed UI documentation
+- Backend implementation is in separate LocationForm repository
+
 ## Next Steps
 
 1. Author `openapi/app2.openapi.yaml` and wire automated client generation.
 2. Add GitHub Actions to build, test, produce SBOM, and export Windows zip artifacts.
 3. Introduce Redis-backed output caching toggle and distributed rate limit storage as needed.
+4. Replace Todo feature with your domain entities using Location feature as reference.
