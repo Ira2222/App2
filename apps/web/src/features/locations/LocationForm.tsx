@@ -1,405 +1,234 @@
-import { useState, type FormEvent } from "react";
-import type { LocationDto, LocationUpsertDto, LocationType } from "./types";
+import { useEffect, useMemo, useState } from "react";
+import type { LocationUpsertDto, LocationType } from "./types";
+import "./styles.css";
 
-interface LocationFormProps {
-  location?: LocationDto | null;
-  onSubmit: (dto: LocationUpsertDto) => Promise<void>;
-  onCancel: () => void;
-}
-
-const LOCATION_TYPES: LocationType[] = [
+const TYPES: LocationType[] = [
   "ShipToSite",
   "BillToSite",
   "OfficeSite",
   "InternalSite",
 ];
 
-/**
- * Form component for creating or editing a Location.
- * Includes client-side validation matching LocationUpsertValidator.cs
- */
-export default function LocationForm({
-  location,
-  onSubmit,
-  onCancel,
-}: LocationFormProps) {
-  const isEditing = !!location;
+type Props = {
+  initial?: Partial<LocationUpsertDto> | null;
+  onSubmit: (dto: LocationUpsertDto) => Promise<void> | void;
+  onCancel?: () => void;
+};
 
-  // Form state
-  const [formData, setFormData] = useState<LocationUpsertDto>({
-    name: location?.name ?? "",
-    addressLine1: location?.addressLine1 ?? "",
-    addressLine2: location?.addressLine2 ?? null,
-    city: location?.city ?? "",
-    state: location?.state ?? "",
-    zip: location?.zip ?? "",
-    department: location?.department ?? null,
-    division: location?.division ?? null,
-    section: location?.section ?? null,
-    deactivate: location ? !location.isActive : false,
-    useAs: location?.useAs ?? "ShipToSite",
-    requesterName: location?.requesterName ?? null,
-    requesterEmail: location?.requesterEmail ?? null,
-    requesterPhone: location?.requesterPhone ?? null,
+type Errors = Partial<Record<keyof LocationUpsertDto, string>>;
+
+export default function LocationForm({ initial, onSubmit, onCancel }: Props) {
+  const [dto, setDto] = useState<LocationUpsertDto>({
+    name: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "MD",
+    zip: "",
+    department: "",
+    division: "",
+    section: "",
+    deactivate: false,
+    useAs: "ShipToSite",
+    requesterName: "",
+    requesterEmail: "",
+    requesterPhone: "",
+    ...(initial ?? {}),
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    if (initial) setDto((d) => ({ ...d, ...initial }));
+  }, [initial]);
 
-  /**
-   * Client-side validation matching FluentValidation rules
-   */
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const errors: Errors = useMemo(() => validate(dto), [dto]);
 
-    // Name (required, max 160)
-    if (!formData.name.trim()) {
-      newErrors.name = "Location name is required";
-    } else if (formData.name.length > 160) {
-      newErrors.name = "Location name must not exceed 160 characters";
-    }
+  function validate(x: LocationUpsertDto): Errors {
+    const e: Errors = {};
+    if (!x.name?.trim()) e.name = "Name is required";
+    if (!x.addressLine1?.trim()) e.addressLine1 = "Address is required";
+    if (!x.city?.trim()) e.city = "City is required";
+    if (!x.state?.trim()) e.state = "State is required";
+    if (x.state && x.state.trim().length !== 2) e.state = "Use 2-letter code";
+    if (!x.zip?.trim()) e.zip = "ZIP is required";
+    if (x.requesterEmail && !/^\S+@\S+\.\S+$/.test(x.requesterEmail))
+      e.requesterEmail = "Invalid email";
+    return e;
+  }
 
-    // AddressLine1 (required, max 160)
-    if (!formData.addressLine1.trim()) {
-      newErrors.addressLine1 = "Address line 1 is required";
-    } else if (formData.addressLine1.length > 160) {
-      newErrors.addressLine1 = "Address line 1 must not exceed 160 characters";
-    }
+  const hasErrors = Object.keys(errors).length > 0;
 
-    // AddressLine2 (optional, max 160)
-    if (formData.addressLine2 && formData.addressLine2.length > 160) {
-      newErrors.addressLine2 = "Address line 2 must not exceed 160 characters";
-    }
-
-    // City (required, max 80)
-    if (!formData.city.trim()) {
-      newErrors.city = "City is required";
-    } else if (formData.city.length > 80) {
-      newErrors.city = "City must not exceed 80 characters";
-    }
-
-    // State (required, exactly 2 characters)
-    if (!formData.state.trim()) {
-      newErrors.state = "State is required";
-    } else if (formData.state.length !== 2) {
-      newErrors.state = "State must be exactly 2 characters (e.g., 'MD', 'VA')";
-    }
-
-    // ZIP (required, format validation)
-    if (!formData.zip.trim()) {
-      newErrors.zip = "ZIP code is required";
-    } else if (formData.zip.length > 10) {
-      newErrors.zip = "ZIP code must not exceed 10 characters";
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-      newErrors.zip = "ZIP code must be in format 12345 or 12345-6789";
-    }
-
-    // Department (optional, max 100)
-    if (formData.department && formData.department.length > 100) {
-      newErrors.department = "Department must not exceed 100 characters";
-    }
-
-    // Division (optional, max 100)
-    if (formData.division && formData.division.length > 100) {
-      newErrors.division = "Division must not exceed 100 characters";
-    }
-
-    // Section (optional, max 100)
-    if (formData.section && formData.section.length > 100) {
-      newErrors.section = "Section must not exceed 100 characters";
-    }
-
-    // RequesterName (optional, max 100)
-    if (formData.requesterName && formData.requesterName.length > 100) {
-      newErrors.requesterName = "Requester name must not exceed 100 characters";
-    }
-
-    // RequesterEmail (optional, email format, max 256)
-    if (formData.requesterEmail) {
-      if (formData.requesterEmail.length > 256) {
-        newErrors.requesterEmail = "Requester email must not exceed 256 characters";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.requesterEmail)) {
-        newErrors.requesterEmail = "Requester email must be a valid email address";
-      }
-    }
-
-    // RequesterPhone (optional, max 40, pattern validation)
-    if (formData.requesterPhone) {
-      if (formData.requesterPhone.length > 40) {
-        newErrors.requesterPhone = "Requester phone must not exceed 40 characters";
-      } else if (!/^[\d\s\-\(\)\+\.ext]+$/.test(formData.requesterPhone)) {
-        newErrors.requesterPhone = "Requester phone contains invalid characters";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
-
-    setSubmitting(true);
-    try {
-      await onSubmit(formData);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleChange = (field: keyof LocationUpsertDto, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+    if (hasErrors) return;
+    await onSubmit(dto);
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="location-form">
-      <h2>{isEditing ? "Edit Location" : "New Location"}</h2>
-
-      {/* Basic Information */}
-      <fieldset>
-        <legend>Basic Information</legend>
-
-        <div className="form-field">
-          <label htmlFor="name">Location Name *</label>
+    <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
+      <fieldset className="locations-card" style={{ display: "grid", gap: 8 }}>
+        <legend className="locations-h2">Location Details</legend>
+        <label>
+          Name*
           <input
-            id="name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleChange("name", e.target.value)}
-            maxLength={160}
-            required
+            className="input"
+            value={dto.name}
+            onChange={(e) => setDto({ ...dto, name: e.target.value })}
           />
-          {errors.name && <span className="error">{errors.name}</span>}
-        </div>
+          {errors.name && <small className="error">{errors.name}</small>}
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="useAs">Use As *</label>
-          <select
-            id="useAs"
-            value={formData.useAs}
-            onChange={(e) => handleChange("useAs", e.target.value as LocationType)}
-            required
-          >
-            {LOCATION_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type.replace(/([A-Z])/g, " $1").trim()}
-              </option>
-            ))}
-          </select>
-          {errors.useAs && <span className="error">{errors.useAs}</span>}
-        </div>
+        <label>
+          Department
+          <input
+            className="input"
+            value={dto.department ?? ""}
+            onChange={(e) => setDto({ ...dto, department: e.target.value })}
+          />
+        </label>
+
+        <label>
+          Division
+          <input
+            className="input"
+            value={dto.division ?? ""}
+            onChange={(e) => setDto({ ...dto, division: e.target.value })}
+          />
+        </label>
+
+        <label>
+          Section
+          <input
+            className="input"
+            value={dto.section ?? ""}
+            onChange={(e) => setDto({ ...dto, section: e.target.value })}
+          />
+        </label>
       </fieldset>
 
-      {/* Address */}
-      <fieldset>
-        <legend>Address</legend>
-
-        <div className="form-field">
-          <label htmlFor="addressLine1">Address Line 1 *</label>
+      <fieldset className="locations-card" style={{ display: "grid", gap: 8 }}>
+        <legend className="locations-h2">Address</legend>
+        <label>
+          Address 1*
           <input
-            id="addressLine1"
-            type="text"
-            value={formData.addressLine1}
-            onChange={(e) => handleChange("addressLine1", e.target.value)}
-            maxLength={160}
-            required
+            className="input"
+            value={dto.addressLine1}
+            onChange={(e) => setDto({ ...dto, addressLine1: e.target.value })}
           />
-          {errors.addressLine1 && <span className="error">{errors.addressLine1}</span>}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="addressLine2">Address Line 2</label>
-          <input
-            id="addressLine2"
-            type="text"
-            value={formData.addressLine2 ?? ""}
-            onChange={(e) =>
-              handleChange("addressLine2", e.target.value || null)
-            }
-            maxLength={160}
-          />
-          {errors.addressLine2 && <span className="error">{errors.addressLine2}</span>}
-        </div>
-
-        <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="city">City *</label>
-            <input
-              id="city"
-              type="text"
-              value={formData.city}
-              onChange={(e) => handleChange("city", e.target.value)}
-              maxLength={80}
-              required
-            />
-            {errors.city && <span className="error">{errors.city}</span>}
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="state">State *</label>
-            <input
-              id="state"
-              type="text"
-              value={formData.state}
-              onChange={(e) =>
-                handleChange("state", e.target.value.toUpperCase())
-              }
-              maxLength={2}
-              placeholder="MD"
-              required
-            />
-            {errors.state && <span className="error">{errors.state}</span>}
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="zip">ZIP Code *</label>
-            <input
-              id="zip"
-              type="text"
-              value={formData.zip}
-              onChange={(e) => handleChange("zip", e.target.value)}
-              maxLength={10}
-              placeholder="12345"
-              required
-            />
-            {errors.zip && <span className="error">{errors.zip}</span>}
-          </div>
-        </div>
-      </fieldset>
-
-      {/* Organization */}
-      <fieldset>
-        <legend>Organization</legend>
-
-        <div className="form-field">
-          <label htmlFor="department">Department</label>
-          <input
-            id="department"
-            type="text"
-            value={formData.department ?? ""}
-            onChange={(e) =>
-              handleChange("department", e.target.value || null)
-            }
-            maxLength={100}
-          />
-          {errors.department && <span className="error">{errors.department}</span>}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="division">Division</label>
-          <input
-            id="division"
-            type="text"
-            value={formData.division ?? ""}
-            onChange={(e) => handleChange("division", e.target.value || null)}
-            maxLength={100}
-          />
-          {errors.division && <span className="error">{errors.division}</span>}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="section">Section</label>
-          <input
-            id="section"
-            type="text"
-            value={formData.section ?? ""}
-            onChange={(e) => handleChange("section", e.target.value || null)}
-            maxLength={100}
-          />
-          {errors.section && <span className="error">{errors.section}</span>}
-        </div>
-      </fieldset>
-
-      {/* Requester */}
-      <fieldset>
-        <legend>Requester Information</legend>
-
-        <div className="form-field">
-          <label htmlFor="requesterName">Requester Name</label>
-          <input
-            id="requesterName"
-            type="text"
-            value={formData.requesterName ?? ""}
-            onChange={(e) =>
-              handleChange("requesterName", e.target.value || null)
-            }
-            maxLength={100}
-          />
-          {errors.requesterName && (
-            <span className="error">{errors.requesterName}</span>
+          {errors.addressLine1 && (
+            <small className="error">{errors.addressLine1}</small>
           )}
-        </div>
+        </label>
 
-        <div className="form-field">
-          <label htmlFor="requesterEmail">Requester Email</label>
+        <label>
+          Address 2
           <input
-            id="requesterEmail"
+            className="input"
+            value={dto.addressLine2 ?? ""}
+            onChange={(e) => setDto({ ...dto, addressLine2: e.target.value })}
+          />
+        </label>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", gap: 8 }}>
+          <label>
+            City*
+            <input
+              className="input"
+              value={dto.city}
+              onChange={(e) => setDto({ ...dto, city: e.target.value })}
+            />
+            {errors.city && <small className="error">{errors.city}</small>}
+          </label>
+
+          <label>
+            State*
+            <input
+              className="input"
+              maxLength={2}
+              value={dto.state}
+              onChange={(e) => setDto({ ...dto, state: e.target.value.toUpperCase() })}
+            />
+            {errors.state && <small className="error">{errors.state}</small>}
+          </label>
+
+          <label>
+            ZIP*
+            <input
+              className="input"
+              value={dto.zip}
+              onChange={(e) => setDto({ ...dto, zip: e.target.value })}
+            />
+            {errors.zip && <small className="error">{errors.zip}</small>}
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="locations-card" style={{ display: "grid", gap: 8 }}>
+        <legend className="locations-h2">Use As</legend>
+        <div className="row">
+          {TYPES.map((t) => (
+            <label key={t} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="radio"
+                name="useAs"
+                checked={dto.useAs === t}
+                onChange={() => setDto({ ...dto, useAs: t })}
+              />
+              {t.replace(/([A-Z])/g, " $1").trim()}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <label style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+        <input
+          type="checkbox"
+          checked={dto.deactivate}
+          onChange={(e) => setDto({ ...dto, deactivate: e.target.checked })}
+        />
+        Deactivate location
+      </label>
+
+      <fieldset className="locations-card" style={{ display: "grid", gap: 8 }}>
+        <legend className="locations-h2">Requester</legend>
+        <label>
+          Name
+          <input
+            className="input"
+            value={dto.requesterName ?? ""}
+            onChange={(e) => setDto({ ...dto, requesterName: e.target.value })}
+          />
+        </label>
+        <label>
+          Email
+          <input
+            className="input"
             type="email"
-            value={formData.requesterEmail ?? ""}
-            onChange={(e) =>
-              handleChange("requesterEmail", e.target.value || null)
-            }
-            maxLength={256}
+            value={dto.requesterEmail ?? ""}
+            onChange={(e) => setDto({ ...dto, requesterEmail: e.target.value })}
           />
           {errors.requesterEmail && (
-            <span className="error">{errors.requesterEmail}</span>
+            <small className="error">{errors.requesterEmail}</small>
           )}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="requesterPhone">Requester Phone</label>
+        </label>
+        <label>
+          Phone
           <input
-            id="requesterPhone"
-            type="tel"
-            value={formData.requesterPhone ?? ""}
-            onChange={(e) =>
-              handleChange("requesterPhone", e.target.value || null)
-            }
-            maxLength={40}
-            placeholder="(123) 456-7890"
+            className="input"
+            value={dto.requesterPhone ?? ""}
+            onChange={(e) => setDto({ ...dto, requesterPhone: e.target.value })}
           />
-          {errors.requesterPhone && (
-            <span className="error">{errors.requesterPhone}</span>
-          )}
-        </div>
+        </label>
       </fieldset>
 
-      {/* Status */}
-      {isEditing && (
-        <fieldset>
-          <legend>Status</legend>
-          <div className="form-field checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.deactivate}
-                onChange={(e) => handleChange("deactivate", e.target.checked)}
-              />
-              Deactivate this location
-            </label>
-          </div>
-        </fieldset>
-      )}
-
-      {/* Actions */}
-      <div className="form-actions">
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : isEditing ? "Update" : "Create"}
+      <div className="row">
+        <button className="btn" type="submit" disabled={hasErrors}>
+          Save
         </button>
-        <button type="button" onClick={onCancel} disabled={submitting}>
-          Cancel
-        </button>
+        {onCancel && (
+          <button className="btn" type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );

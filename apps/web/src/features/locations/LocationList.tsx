@@ -1,223 +1,164 @@
-import { useState, useEffect } from "react";
-import type { LocationDto, LocationUpsertDto } from "./types";
-import { locationApi } from "./api";
+import { useEffect, useState } from "react";
+import {
+  listLocations,
+  createLocation,
+  updateLocation,
+  deactivateLocation,
+  getLocation,
+} from "./api";
+import type { LocationDto, LocationUpsertDto, LocationType } from "./types";
 import LocationForm from "./LocationForm";
 import "./styles.css";
 
-/**
- * List view for locations with inline create/edit and CRUD operations
- */
 export default function LocationList() {
-  const [locations, setLocations] = useState<LocationDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<LocationDto[]>([]);
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  // Form state
-  const [showForm, setShowForm] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<LocationDto | null>(null);
-
-  /**
-   * Load locations from API
-   */
-  const loadLocations = async () => {
-    setLoading(true);
+  async function load() {
     setError(null);
     try {
-      const data = await locationApi.getAll(includeInactive);
-      setLocations(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load locations");
-    } finally {
-      setLoading(false);
+      setItems(await listLocations(includeInactive));
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load locations");
     }
-  };
+  }
 
-  // Load on mount and when includeInactive changes
   useEffect(() => {
-    loadLocations();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeInactive]);
 
-  /**
-   * Handle create
-   */
-  const handleCreate = async (dto: LocationUpsertDto) => {
-    await locationApi.create(dto);
-    setShowForm(false);
-    await loadLocations();
-  };
-
-  /**
-   * Handle update
-   */
-  const handleUpdate = async (dto: LocationUpsertDto) => {
-    if (!editingLocation) return;
-    await locationApi.update(editingLocation.id, dto);
-    setEditingLocation(null);
-    setShowForm(false);
-    await loadLocations();
-  };
-
-  /**
-   * Handle deactivate (soft delete)
-   */
-  const handleDeactivate = async (id: string) => {
-    if (!confirm("Are you sure you want to deactivate this location?")) return;
+  async function handleSubmit(dto: LocationUpsertDto) {
+    setBusy(true);
+    setError(null);
     try {
-      await locationApi.deactivate(id);
-      await loadLocations();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to deactivate location");
+      if (editingId) {
+        await updateLocation(editingId, dto);
+      } else {
+        await createLocation(dto);
+      }
+      setEditingId(null);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Save failed");
+    } finally {
+      setBusy(false);
     }
-  };
-
-  /**
-   * Open form for editing
-   */
-  const handleEdit = (location: LocationDto) => {
-    setEditingLocation(location);
-    setShowForm(true);
-  };
-
-  /**
-   * Cancel form
-   */
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingLocation(null);
-  };
-
-  /**
-   * Open form for creating
-   */
-  const handleNew = () => {
-    setEditingLocation(null);
-    setShowForm(true);
-  };
-
-  if (loading) {
-    return <div className="loading">Loading locations...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="error">
-        <p>Error: {error}</p>
-        <button onClick={loadLocations}>Retry</button>
-      </div>
-    );
+  async function startEdit(id: string) {
+    setError(null);
+    try {
+      const x = await getLocation(id);
+      const dto: LocationUpsertDto = {
+        name: x.name,
+        addressLine1: x.addressLine1,
+        addressLine2: x.addressLine2 ?? "",
+        city: x.city,
+        state: x.state,
+        zip: x.zip,
+        department: x.department ?? "",
+        division: x.division ?? "",
+        section: x.section ?? "",
+        deactivate: !x.isActive,
+        useAs: x.useAs as LocationType,
+        requesterName: x.requesterName ?? "",
+        requesterEmail: x.requesterEmail ?? "",
+        requesterPhone: x.requesterPhone ?? "",
+      };
+      setEditingId(id);
+      setFormInitial(dto);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load item");
+    }
   }
+
+  async function doDeactivate(id: string) {
+    if (!confirm("Deactivate this location?")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deactivateLocation(id);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Deactivate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const [formInitial, setFormInitial] = useState<Partial<LocationUpsertDto> | null>(null);
 
   return (
-    <div className="location-list-container">
-      <header className="list-header">
-        <h1>Locations</h1>
-        {!showForm && (
-          <button onClick={handleNew} className="btn-primary">
-            New Location
-          </button>
-        )}
-      </header>
+    <div className="locations-container">
+      <h1 className="locations-h1">Locations</h1>
 
-      {showForm ? (
+      <div className="row">
+        <label style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+          />
+          Show inactive
+        </label>
+        {busy && <span className="muted">Working…</span>}
+        {error && <span style={{ color: "crimson" }}>{error}</span>}
+      </div>
+
+      <div className="locations-card">
+        <h2 className="locations-h2">{editingId ? "Edit Location" : "Create Location"}</h2>
         <LocationForm
-          location={editingLocation}
-          onSubmit={editingLocation ? handleUpdate : handleCreate}
-          onCancel={handleCancel}
+          key={editingId ?? "new"}
+          initial={formInitial ?? undefined}
+          onSubmit={handleSubmit}
+          onCancel={() => {
+            setEditingId(null);
+            setFormInitial(null);
+          }}
         />
-      ) : (
-        <>
-          <div className="list-controls">
-            <label>
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-              />
-              Include inactive locations
-            </label>
-            <span className="count">
-              {locations.length} location{locations.length !== 1 ? "s" : ""}
-            </span>
-          </div>
+      </div>
 
-          {locations.length === 0 ? (
-            <div className="empty-state">
-              <p>No locations found.</p>
-              <button onClick={handleNew}>Create your first location</button>
-            </div>
-          ) : (
-            <table className="locations-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th>City</th>
-                  <th>State</th>
-                  <th>ZIP</th>
-                  <th>Type</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {locations.map((location) => (
-                  <tr
-                    key={location.id}
-                    className={!location.isActive ? "inactive" : ""}
-                  >
-                    <td>
-                      <strong>{location.name}</strong>
-                    </td>
-                    <td>
-                      {location.addressLine1}
-                      {location.addressLine2 && (
-                        <>
-                          <br />
-                          {location.addressLine2}
-                        </>
-                      )}
-                    </td>
-                    <td>{location.city}</td>
-                    <td>{location.state}</td>
-                    <td>{location.zip}</td>
-                    <td>{location.useAs.replace(/([A-Z])/g, " $1").trim()}</td>
-                    <td>{location.department || "-"}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${
-                          location.isActive ? "active" : "inactive"
-                        }`}
-                      >
-                        {location.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="actions">
-                      <button
-                        onClick={() => handleEdit(location)}
-                        className="btn-small"
-                        title="Edit"
-                      >
-                        Edit
-                      </button>
-                      {location.isActive && (
-                        <button
-                          onClick={() => handleDeactivate(location.id)}
-                          className="btn-small btn-danger"
-                          title="Deactivate"
-                        >
-                          Deactivate
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      )}
+      <div className="locations-card" style={{ overflowX: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th align="left">Name</th>
+              <th align="left">Address</th>
+              <th align="left">Type</th>
+              <th>Active</th>
+              <th align="left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((x) => (
+              <tr key={x.id}>
+                <td>{x.name}</td>
+                <td>
+                  {x.addressLine1}
+                  {x.addressLine2 ? `, ${x.addressLine2}` : ""}, {x.city}, {x.state} {x.zip}
+                </td>
+                <td>{x.useAs.replace(/([A-Z])/g, " $1").trim()}</td>
+                <td align="center">{x.isActive ? "✅" : "❌"}</td>
+                <td>
+                  <button className="btn" onClick={() => startEdit(x.id)}>Edit</button>{" "}
+                  {x.isActive && <button className="btn" onClick={() => doDeactivate(x.id)}>Deactivate</button>}
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ padding: 12 }} className="muted">
+                  No locations found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
