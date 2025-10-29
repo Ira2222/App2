@@ -7,6 +7,45 @@
 
 A modular .NET 8 Minimal API + Vite React starter built for secure-by-default services and spec-first workflows. The API exposes feature-flagged middleware (auth, CORS, rate limiting, output caching, security headers, observability) and serves as the backend for a React client that consumes generated OpenAPI clients.
 
+---
+
+## 🔖 Template Repository
+
+This is a **template** for building production-ready .NET 8 APIs with React frontends. It includes:
+
+- **Clean Architecture** with CQRS pattern (MediatR)
+- **Security**: CodeQL, Trivy scanning, SLSA provenance
+- **Multi-arch containers** (linux/amd64, linux/arm64)
+- **Feature flags** for auth, CORS, caching, telemetry
+- **Optional integrations**: Azure AD, KeyVault, Redis, PostgreSQL
+- **Modern frontend**: React 18 + Vite 7 + TypeScript
+
+### Creating a New Project
+
+**Option 1: GitHub UI**
+1. Click **"Use this template"** button above
+2. Choose **"Create a new repository"**
+3. Name your project and create
+
+**Option 2: GitHub CLI**
+```bash
+gh repo create your-org/your-project --template Ira2222/App2 --private --clone
+cd your-project
+# Make your changes, then:
+git add .
+git commit -m "feat: initialize project"
+git push
+```
+
+**Next Steps After Creating**:
+1. Update `appsettings.json` with your Azure AD credentials (if using auth)
+2. Rename namespaces from `App2.*` to `YourProject.*` (search/replace across solution)
+3. Replace the Todo entity with your domain entities
+4. Update `README.md` with your project details
+5. Push changes - CI will run automatically
+
+---
+
 ## 5-Minute Quickstart
 
 ```bash
