@@ -5,14 +5,30 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      nuget-security:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+          - "minor"
 
   - package-ecosystem: "npm"
     directory: "/apps/web"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      npm-security:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+          - "minor"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions-updates:
+        patterns:
+          - "*"

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/Ira2222/App2/discussions
+    about: Have a question? Start a discussion instead of opening an issue.
+  - name: Security Issue
+    url: https://github.com/Ira2222/App2/security/advisories/new
+    about: Report a security vulnerability privately.

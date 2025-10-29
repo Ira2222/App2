@@ -1,0 +1,32 @@
+# CODEOWNERS file for App2 template
+# Each line is a file pattern followed by one or more owners.
+# Order matters: the last matching pattern takes precedence.
+
+# Default owner for everything in the repo
+* @Ira2222
+
+# Backend API and core application logic
+/src/App2.Api/ @Ira2222
+/src/App2.Application/ @Ira2222
+/src/App2.Domain/ @Ira2222
+/src/App2.Infrastructure/ @Ira2222
+
+# Frontend
+/apps/web/ @Ira2222
+
+# CI/CD and infrastructure
+/.github/ @Ira2222
+/scripts/ @Ira2222
+*.yml @Ira2222
+*.yaml @Ira2222
+Dockerfile @Ira2222
+docker-compose*.yml @Ira2222
+
+# Tests
+/tests/ @Ira2222
+
+# Documentation and configuration
+*.md @Ira2222
+*.json @Ira2222
+*.config @Ira2222
+appsettings*.json @Ira2222

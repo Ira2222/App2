@@ -35,3 +35,75 @@ Use Conventional Commits:
 - `docs: update production checklist`
 
 Keep PRs concise (< 300 LOC diff when possible). If a change is necessarily large, outline a plan with checkpoints and land it in stages.
+
+## Repository Setup (for New Projects from Template)
+
+When you create a new project from this template, configure these settings:
+
+### 1. Branch Protection
+
+Protect the `main` branch to enforce quality standards:
+
+1. Go to **Settings → Branches → Add rule**
+2. Branch name pattern: `main`
+3. Enable:
+   - ✅ **Require a pull request before merging**
+     - Required approvals: 1
+   - ✅ **Require status checks to pass before merging**
+     - Required checks: `ci`, `container`, `security`
+   - ✅ **Require conversation resolution before merging**
+   - ✅ **Do not allow bypassing the above settings**
+4. Disable:
+   - ❌ Allow force pushes
+   - ❌ Allow deletions
+
+[GitHub Docs: Branch Protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule)
+
+### 2. GitHub Environments (Optional)
+
+For deployment workflows, create environments with protection rules:
+
+1. Go to **Settings → Environments**
+2. Create environments: `dev`, `staging`, `prod`
+3. For `staging` and `prod`:
+   - Add required reviewers
+   - Set deployment branch: `main` only
+   - Add environment secrets (API keys, connection strings, etc.)
+
+[GitHub Docs: Environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment)
+
+### 3. Code Security
+
+Enable security features:
+
+1. **Settings → Security → Code scanning**
+   - CodeQL analysis is already configured via workflow
+   - Review alerts regularly
+
+2. **Settings → Security → Secret scanning**
+   - Enable for public and private repos
+
+3. **Settings → Security → Dependabot**
+   - Alerts: Already enabled
+   - Security updates: Enable if desired
+   - Version updates: Configured via `.github/dependabot.yml`
+
+### 4. Update CODEOWNERS
+
+Edit `.github/CODEOWNERS` to reflect your team:
+```
+# Replace @Ira2222 with your team/username
+* @your-team
+/src/App2.Api/ @backend-team
+/apps/web/ @frontend-team
+```
+
+### 5. Repository Settings
+
+Recommended settings:
+- **Settings → General**
+  - ✅ Allow squash merging (default)
+  - ✅ Automatically delete head branches
+  - ✅ Always suggest updating pull request branches
+- **Settings → Actions**
+  - Workflow permissions: Read and write (for SBOM/attestation)
