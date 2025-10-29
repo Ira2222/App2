@@ -20,38 +20,56 @@ This is a **template** for building production-ready .NET 8 APIs with React fron
 - **Optional integrations**: Azure AD, KeyVault, Redis, PostgreSQL
 - **Modern frontend**: React 18 + Vite 7 + TypeScript
 
-### Creating a New Project
+### Create a New App
 
-**Option 1: GitHub UI**
-1. Click **"Use this template"** button above
-2. Choose **"Create a new repository"**
-3. Name your project and create
+**Option 1: One-command bootstrap (recommended)**
+```bash
+./scripts/new-project.sh YourProject YourGitHubOrg private
+```
+
+The script wraps `gh repo create --template Ira2222/App2`, enables the local git hook, turns on Dependabot/security features, and documents any free-tier limitations.
 
 **Option 2: GitHub CLI**
 ```bash
 gh repo create your-org/your-project --template Ira2222/App2 --private --clone
 cd your-project
-# Make your changes, then:
-git add .
-git commit -m "feat: initialize project"
-git push
 ```
 
+**Option 3: GitHub UI**
+1. Click **Use this template**
+2. Choose **Create a new repository**
+3. Name your project and create it
+
 **Next Steps After Creating**:
-1. **Enable git hooks** (auto-enabled by `new-project` scripts):
+1. **Record template lineage** so every repo knows its origin:
    ```bash
-   git config core.hooksPath .githooks
-   chmod +x .githooks/pre-push
+   cat <<'EOF' > TEMPLATE_ORIGIN.md
+   # Template Origin
+
+   - Template: https://github.com/Ira2222/App2
+   - Template release/tag: template-vX.Y.Z
+   - Commit SHA: <copy-from-App2>
+   - Generated on: $(date +%Y-%m-%d)
+   - Post-clone steps: rename-from-template, env setup, guardrails
+   - Initial customizations: ...
+   EOF
    ```
 2. **Rename namespaces** using provided scripts:
    ```bash
    ./scripts/rename-from-template.sh YourProject
    # OR: pwsh ./scripts/rename-from-template.ps1 -Name YourProject
    ```
-3. Update `appsettings.json` with your Azure AD credentials (if using auth)
-4. Replace the Todo entity with your domain entities
-5. Update `README.md` with your project details
-6. Push changes - CI will run automatically
+3. Git hooks: the automation script enables them; if you cloned manually, run:
+   ```bash
+   git config core.hooksPath .githooks
+   chmod +x .githooks/pre-push
+   ```
+4. Update `appsettings.json` with your credentials (if using auth)
+5. Replace the Todo entity with your domain entities
+6. Update `README.md` with project details (include a “Template Lineage” section that links back here)
+7. Push changes – CI will run automatically
+
+Template updates ship under `template-v*` tags and are summarized in `TEMPLATE_CHANGELOG.md`. Compare your `TEMPLATE_ORIGIN.md` against the changelog to decide when to pull improvements forward.
 
 ### Free-Tier Guardrails
 
