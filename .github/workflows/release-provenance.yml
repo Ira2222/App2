@@ -17,7 +17,7 @@ jobs:
     env:
       ART_DIR: artifacts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v5
@@ -70,7 +70,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Install GitHub CLI
         run: |
