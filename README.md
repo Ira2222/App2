@@ -71,6 +71,10 @@ cd your-project
 
 Template updates ship under `template-v*` tags and are summarized in `TEMPLATE_CHANGELOG.md`. Compare your `TEMPLATE_ORIGIN.md` against the changelog to decide when to pull improvements forward.
 
+### Reference Implementation
+
+Looking for a production example built on App2? Check out [LocationForm](https://github.com/Ira2222/LocationForm) for an Entra ID-protected API + MSAL React client using this template.
+
 ### Free-Tier Guardrails
 
 This template includes security guardrails that work on **GitHub Free** private repos (no Pro/Advanced Security needed):
@@ -119,6 +123,10 @@ cd App2
 
 The API listens on `https://localhost:5081` by default; adjust launch settings or use `dotnet watch` for hot reload. The web app uses `VITE_API_BASE_URL` to target the API.
 
+**Agents starter pack**: see `agents/` (PM/DEV/OPS briefs + task playbook) to help AI copilots orient quickly.
+
+**CI artifacts**: the reusable workflow now publishes zipped Windows-ready bundles (`{project-name}-windows-bundles`) alongside SBOM output. Configure `project-name` and `api-project-path` inputs for derived applications.
+
 ## Feature Flags
 
 Toggle middleware via `appsettings.json` → `Features`. Development defaults enable most features while keeping auth disabled until Azure AD values are provided.
@@ -142,6 +150,7 @@ Toggle middleware via `appsettings.json` → `Features`. Development defaults en
 
 - `scripts/dev-up.sh` – convenience launcher for API + web.
 - `scripts/sanity-check.sh` – probes health endpoints, todos API, and docs UI.
+- `config/schema.yaml` – documents feature flags, connection strings, and environment keys expected in downstream apps.
 
 ## Front-end (React + Vite)
 
@@ -258,6 +267,26 @@ The Location feature demonstrates:
 **Reference Files**:
 - See `apps/web/src/features/locations/README.md` for detailed UI documentation
 - Backend implementation is in separate LocationForm repository
+
+## Reusable Workflow Parameters
+
+The `_ci.yml` workflow accepts the following parameters for derived applications:
+
+```yaml
+jobs:
+  ci:
+    uses: ./.github/workflows/_ci.yml
+    with:
+      dotnet-version: '8.0.x'                    # .NET version to use
+      project-name: 'your-project-name'          # Used for artifact naming
+      api-project-path: 'src/YourApi/YourApi.csproj'  # Path to API project
+    secrets: inherit
+```
+
+**Artifact outputs**:
+- `{project-name}-windows-bundles` containing:
+  - `{project-name}-api-win.zip` (published API)
+  - `{project-name}-web-win.zip` (built web assets)
 
 ## Next Steps
 

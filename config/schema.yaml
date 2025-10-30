@@ -1,0 +1,70 @@
+# App2 configuration reference (documentation only; appsettings.* is authoritative)
+features:
+  Authentication:
+    type: boolean
+    default: false
+    description: Enables JWT bearer auth via Microsoft.Identity.Web when true.
+  CORS:
+    type: boolean
+    default: true
+    description: Turns on the named allow-list CORS policy.
+  RateLimiting:
+    type: boolean
+    default: true
+    description: Activates fixed-window rate limiting middleware.
+  OutputCaching:
+    type: boolean
+    default: true
+    description: Enables output caching (with optional Redis backing).
+  SecurityHeaders:
+    type: boolean
+    default: true
+    description: Applies NetEscapades security headers middleware.
+  OpenTelemetry:
+    type: boolean
+    default: false
+    description: Wires OTLP exporter when configured.
+
+database:
+  provider:
+    key: Data:Provider
+    allowedValues: [Postgres, Sqlite]
+    description: Chooses the EF Core database provider.
+  connections:
+    Sqlite:
+      key: Data:ConnectionStrings:Sqlite
+      description: Local development connection string (default).
+    Postgres:
+      key: Data:ConnectionStrings:Postgres
+      description: Optional Postgres connection string for production/Testcontainers.
+
+azure:
+  KeyVault:
+    key: KeyVault:VaultUri
+    description: URI of Azure Key Vault when `USE_KEYVAULT=true`.
+
+cors:
+  allowedOrigins:
+    key: Cors:AllowedOrigins
+    description: Explicit list of allowed origins for the SPA.
+  allowedMethods:
+    hardCoded: [GET, POST, PUT, DELETE, PATCH]
+    description: Methods exposed to the client.
+  allowedHeaders:
+    hardCoded: [Authorization, Content-Type]
+    description: Headers allowed from the client.
+  exposedHeaders:
+    hardCoded: [X-Total-Count]
+    description: Response headers exposed to the client.
+
+scripts:
+  rename-from-template:
+    usage: ./scripts/rename-from-template.sh <NewName>
+    description: Renames namespaces/directories after templating.
+  new-project:
+    usage: ./scripts/new-project.sh <Name> [Owner] [Visibility]
+    description: GitHub automation for repo creation & guardrails.
+
+notes:
+  - Update `TEMPLATE_ORIGIN.md` in downstream repos with the tag/commit recorded here.
+  - See LocationForm (https://github.com/Ira2222/LocationForm) for an example of Entra ID + MSAL integration built on App2.

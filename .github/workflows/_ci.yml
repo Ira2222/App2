@@ -7,6 +7,14 @@ on:
         required: false
         type: string
         default: '8.0.x'
+      project-name:
+        required: false
+        type: string
+        default: 'app2'
+      api-project-path:
+        required: false
+        type: string
+        default: 'src/App2.Api/App2.Api.csproj'
 
 jobs:
   build-test:
@@ -69,3 +77,57 @@ jobs:
         with:
           name: sbom
           path: _manifest/spdx_2.2/
+
+  windows-export:
+    needs:
+      - build-test
+      - web-build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Publish API
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP 'api'
+          dotnet publish ${{ inputs.api-project-path }} -c Release -o $publishDir
+
+      - name: Zip API bundle
+        shell: pwsh
+        run: |
+          $apiOutput = Join-Path $env:RUNNER_TEMP 'api'
+          $zipPath = Join-Path $env:RUNNER_TEMP '${{ inputs.project-name }}-api-win.zip'
+          Compress-Archive -Path (Join-Path $apiOutput '*') -DestinationPath $zipPath -Force
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Zip web bundle
+        shell: pwsh
+        run: |
+          $distPath = Join-Path $PWD 'apps/web/dist'
+          $zipPath = Join-Path $env:RUNNER_TEMP '${{ inputs.project-name }}-web-win.zip'
+          Compress-Archive -Path (Join-Path $distPath '*') -DestinationPath $zipPath -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.project-name }}-windows-bundles
+          path: |
+            ${{ runner.temp }}\${{ inputs.project-name }}-api-win.zip
+            ${{ runner.temp }}\${{ inputs.project-name }}-web-win.zip
