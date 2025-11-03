@@ -2,6 +2,7 @@ using System.Linq;
 using System.Reflection;
 using App2.Api.Endpoints.Todos;
 using App2.Api.Extensions;
+using App2.Api.Options;
 using App2.Application.Common.Behaviors;
 using App2.Application.Features.Todos.Commands;
 using App2.Application.Features.Todos.Validators;
@@ -13,6 +14,7 @@ using Azure.Identity;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web;
 using Serilog;
 
@@ -26,6 +28,26 @@ builder.Host.UseSerilog((ctx, cfg) => cfg
 
 // Optional Key Vault bootstrap
 EnableKeyVaultIfConfigured(builder);
+
+// Options validation with ValidateOnStart
+builder.Services.AddOptions<CorsOptions>()
+    .Bind(builder.Configuration.GetSection(CorsOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<RedisOptions>()
+    .Bind(builder.Configuration.GetSection(RedisOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Conditional Azure AD validation (only when authentication is enabled in production)
+if (!builder.Environment.IsDevelopment() && builder.Configuration.GetValue("Features:Authentication", false))
+{
+    builder.Services.AddOptions<AzureAdOptions>()
+        .Bind(builder.Configuration.GetSection(AzureAdOptions.SectionName))
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+}
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddProblemDetails(options =>
