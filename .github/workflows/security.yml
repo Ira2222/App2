@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v5
@@ -26,7 +26,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Initialize CodeQL (C# + JS/TS + Actions)
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: csharp,javascript-typescript,actions
           queries: security-extended
@@ -35,15 +35,15 @@ jobs:
         run: dotnet build -c Release
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   trivy-fs:
     name: Trivy (repo scan → SARIF)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Trivy repo scan (fs)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -61,12 +61,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ hashFiles('**/Dockerfile') != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build API image (if Dockerfile present)
         run: |
           docker build -t app2-api:ci -f src/App2.Api/Dockerfile .
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: 'image'
           image-ref: 'app2-api:ci'
